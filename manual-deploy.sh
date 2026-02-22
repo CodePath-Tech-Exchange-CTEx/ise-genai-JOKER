@@ -1,6 +1,6 @@
 ### VARIABLES TO CHANGE - START
-PROJECT_ID="robert-hardy-hu"
-SERVICE_NAME="joker-website"
+PROJECT_ID=
+SERVICE_NAME=
 ### VARIABLES TO CHANGE - END
 
 # ----------- Manual Deployment ------------ #
