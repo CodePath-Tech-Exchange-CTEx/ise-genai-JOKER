@@ -10,6 +10,8 @@
 import random
 import streamlit as st
 import streamlit.components.v1 as components
+from internals import create_component
+
 
 
 # This one has been written for you as an example. You may change it as wanted.
@@ -140,5 +142,16 @@ def display_recent_workouts(workouts_list):
 
 
 def display_genai_advice(timestamp, content, image):
-    """Write a good docstring here."""
-    pass
+    st.divider()
+    
+    st.subheader("Your AI Workout Motivation")
+
+    formatted_time = timestamp.strftime("%B %d, %Y at %I:%M %p")
+    st.caption(f"Generated on {formatted_time}")
+
+    if image:
+        st.image(image, use_column_width=True)
+
+    st.markdown(f"AI Says:\n{content}")
+
+    st.divider()

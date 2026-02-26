@@ -55,9 +55,16 @@ class TestDisplayActivitySummary(unittest.TestCase):
 class TestDisplayGenAiAdvice(unittest.TestCase):
     """Tests the display_genai_advice function."""
 
-    def test_foo(self):
-        """Tests foo."""
-        pass
+    def test_display_genai_advice_runs(self):
+        """Test that display_genai_advice executes without errors."""
+        try:
+            display_genai_advice(
+                datetime.now(),
+                "Stay disciplined. Consistency builds strength.",
+                "https://example.com/image.jpg"
+            )
+        except Exception as e:
+            self.fail(f"display_genai_advice raised an exception: {e}")
 
 
 class TestDisplayRecentWorkouts(unittest.TestCase):
