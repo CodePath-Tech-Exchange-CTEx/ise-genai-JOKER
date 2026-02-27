@@ -17,21 +17,22 @@ class TestDisplayPost(unittest.TestCase):
 
     def test_post_rendering(self):
         """Tests that the post renders with the correct information."""
-        at = AppTest.from_function(
-            display_post,
-            args=(
-                "testuser",
-                "http://example.com/user.jpg",
-                "2024-01-01 12:00:00",
-                "This is a test post.",
-                "http://example.com/post.jpg",
-            ),
-        )
+        # Instead of from_function, we'll run the function inside a string
+        # that looks like a small Streamlit script. This is more robust.
+        at = AppTest.from_string("""
+from modules import display_post
+display_post(
+    "testuser",
+    "http://example.com/user.jpg",
+    "2024-01-01 12:00:00",
+    "This is a test post.",
+    "http://example.com/post.jpg"
+)
+""")
         at.run()
-
         # Check if the html component is rendered
-        self.assertEqual(len(at.html), 1)
-        html_output = at.html[0].value
+        self.assertEqual(len(at.markdown), 1)
+        html_output = at.markdown[0].value
 
         # Check for key pieces of information in the rendered HTML
         self.assertIn("testuser", html_output)
