@@ -8,6 +8,7 @@
 #############################################################################
 
 import random
+import streamlit as st
 import streamlit.components.v1 as components
 
 
@@ -124,18 +125,8 @@ def display_post(username, user_image, timestamp, content, post_image):
         </div>
       </div>
     </div>
-    <script>
-      // Simple script to resize the iframe to the height of the post
-      const post = document.querySelector('.post');
-      if (post) {{
-        window.parent.postMessage({{
-          'type': 'streamlit:setFrameHeight',
-          'height': post.offsetHeight + 20  // Add a little extra padding
-        }}, '*');
-      }}
-    </script>
     """
-    components.html(post_html, height=600, scrolling=True)
+    st.markdown(post_html, unsafe_allow_html=True)
 
 
 def display_activity_summary(workouts_list):
