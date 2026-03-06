@@ -138,7 +138,7 @@ def display_activity_summary(workouts_list):
         workouts_list: list of workouts.
     """
     
-    total_workouts = str(len(workouts_list))+ ' sessions'
+    total_workouts = str(len(workouts_list)) + ' sessions' if len(workouts_list) > 1 else str(len(workouts_list)) + ' session'
     total_minutes = sum(w.get('duration', 0) for w in workouts_list)
     time_val = f"{total_minutes // 60}h {total_minutes % 60}m" if total_minutes > 60 else f"{total_minutes}m"
     total_calories = sum(w.get('calories', 0) for w in workouts_list)
