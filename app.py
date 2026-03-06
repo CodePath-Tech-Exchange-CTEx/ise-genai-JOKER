@@ -41,6 +41,7 @@ def display_app_page():
                 post_image=post['image'])
 
     elif selection == "Activity Summary":
+        st.header('Activity Summary')
         workouts = get_user_workouts(userId)
         display_activity_summary(workouts)
 

@@ -7,6 +7,7 @@
 #############################################################################
 
 import unittest
+from datetime import datetime
 from streamlit.testing.v1 import AppTest
 from modules import display_post, display_activity_summary, display_genai_advice, display_recent_workouts
 
@@ -47,9 +48,34 @@ display_post(
 class TestDisplayActivitySummary(unittest.TestCase):
     """Tests the display_activity_summary function."""
 
-    def test_foo(self):
-        """Tests foo."""
-        pass
+    def test_activity_summary_rendering(self):
+        """Tests that the activity summary calculates and renders correct totals."""
+        at = AppTest.from_string("""
+from modules import display_activity_summary
+# Mock data to parse
+mock_workouts = [
+    {"duration": 30, "calories": 300},
+    {"duration": 45, "calories": 250}
+]
+display_activity_summary(mock_workouts)
+""")
+        at.run()
+        
+        # The summary uses st.markdown for the HTML card
+        self.assertTrue(len(at.markdown) > 0)
+        html_output = at.markdown[0].value
+
+        # 1. Test Workout Count (length of list)
+        self.assertIn("2 sessions", html_output)
+
+        # 2. Test Time Calculation (30 + 45 = 75 mins -> 1h 15m)
+        self.assertIn("1h 15m", html_output)
+
+        # 3. Test Calorie Calculation (300 + 250 = 550)
+        self.assertIn("550", html_output)
+
+        # 4. Test Progress Ring Percentage (550 / 600 goal approx 91%)
+        self.assertIn("91%", html_output)
 
 
 class TestDisplayGenAiAdvice(unittest.TestCase):
