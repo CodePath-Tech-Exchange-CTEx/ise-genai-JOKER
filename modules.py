@@ -132,8 +132,117 @@ def display_post(username, user_image, timestamp, content, post_image):
 
 
 def display_activity_summary(workouts_list):
-    """Write a good docstring here."""
-    pass
+    """Displays the total metrics of the user's workout (number of workouts, total time spent, total calories burned)
+    
+    Arg:
+        workouts_list: list of workouts.
+    """
+    
+    total_workouts = str(len(workouts_list))+ ' sessions'
+    total_minutes = sum(w.get('duration', 0) for w in workouts_list)
+    time_val = f"{total_minutes // 60}h {total_minutes % 60}m" if total_minutes > 60 else f"{total_minutes}m"
+    total_calories = sum(w.get('calories', 0) for w in workouts_list)
+    calorie_goal = 600
+
+    
+    # calculate ring completion (0 to 100)
+    percent = min(int((total_calories / calorie_goal) * 100), 100)
+    
+    # calculate SVG stroke-dasharray (Circumference is 2 * pi * r)
+    # for r=45, circumference is ~283
+    offset = 283 - (283 * percent / 100)
+
+   
+    html_content = f"""
+    <style>
+      .activity-card {{
+        border: 1px solid #e1e8ed;
+        border-radius: 10px;
+        padding: 20px;
+        margin: 20px auto;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto;
+        max-width: 600px;
+        background-color: #fff;
+        display: flex;
+        align-items: center;
+        gap: 30px;
+      }}
+      .ring-container {{
+        position: relative;
+        width: 120px;
+        height: 120px;
+      }}
+      .ring-svg {{
+        transform: rotate(-90deg);
+      }}
+      .ring-bg {{
+        fill: none;
+        stroke: #f5f8fa;
+        stroke-width: 10;
+      }}
+      .ring-progress {{
+        fill: none;
+        stroke: #fa114f; /* Apple-style Move Red */
+        stroke-width: 10;
+        stroke-linecap: round;
+        transition: stroke-dashoffset 0.5s ease;
+      }}
+      .percent-text {{
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-weight: bold;
+        font-size: 1.2em;
+        color: #14171a;
+      }}
+      .info-container {{
+        flex: 1;
+      }}
+      .stat-label {{
+        color: #657786;
+        font-size: 0.85em;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }}
+      .stat-value {{
+        font-size: 1.8em;
+        font-weight: 800;
+        color: #14171a;
+        margin: 5px 0;
+      }}
+    </style>
+
+    <div class="activity-card">
+      <div class="ring-container">
+        <svg class="ring-svg" width="120" height="120">
+          <circle class="ring-bg" cx="60" cy="60" r="45"></circle>
+          <circle class="ring-progress" cx="60" cy="60" r="45" 
+                  style="stroke-dasharray: 283; stroke-dashoffset: {offset};"></circle>
+        </svg>
+        <div class="percent-text">{percent}%</div>
+      </div>
+      
+    <div class="info-container">
+    <div style="margin-bottom: 12px;">
+        <span class="stat-label">Total Workouts</span>
+        <div style="font-size: 1.2em; font-weight: 800; color: #14171a;">{total_workouts}</div>
+    </div>
+
+    <div style="margin-bottom: 12px;">
+        <span class="stat-label">Time Spent</span>
+        <div style="font-size: 1.2em; font-weight: 800; color: #1da1f2;">{time_val}</div>
+    </div>
+
+    <div>
+        <span class="stat-label">Move Goal</span>
+        <div class="stat-value" style="font-size: 1.5em; margin: 0;">{total_calories} <span style="font-size: 0.5em; color: #657786;">/ {calorie_goal} KCAL</span></div>
+      </div>
+    </div>
+    </div>
+    """
+    
+    st.markdown(html_content, unsafe_allow_html=True)
 
 
 def display_recent_workouts(workouts_list):
