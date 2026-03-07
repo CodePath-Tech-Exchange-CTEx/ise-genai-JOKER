@@ -25,8 +25,33 @@ def display_app_page():
     )
 
     if selection == "Home":
-        st.title("Welcome to the training app")
-        st.write("Select a section from the menu on the left to get started.")
+        user_profile = get_user_profile(userId)
+        st.title(f"Welcome back, {user_profile['username']}! 👋")
+        st.divider()
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.subheader("Latest Advice")
+            advice = get_genai_advice(userId)
+            st.info(f"{advice['content'][:100]} ...") 
+            
+        with col2:
+            st.subheader("Community")
+            posts = get_user_posts(userId)
+            if posts:
+                # show a snippet of the most recent post
+                st.write(f"📢 Latest: *{posts[0]['content'][:50]} ...*")
+
+        with col3:
+            st.subheader("Recent Activity")
+            workout = get_user_workouts(userId)
+            if workout:
+                st.write("🔥 Calories Burned Today:" )
+                st.write(f"{workout[0].get('calories_burned')} kcal")
+
+        st.divider()
+        st.subheader("Today's going to be a great day!")
+        st.write("👈 Use the menu to dive deeper into your stats or community posts.")
 
     elif selection == "Posts":
         st.header('Posts')
