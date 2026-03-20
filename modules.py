@@ -246,8 +246,37 @@ def display_activity_summary(workouts_list):
 
 
 def display_recent_workouts(workouts_list):
-    """Write a good docstring here."""
-    pass
+    """Displays a list of recent workouts with key metrics in a table format.
+    
+    Args:
+        workouts_list: A list of workout dictionaries containing workout details
+                      such as date, exercise type, duration, and calories burned.
+    """
+    if not workouts_list or len(workouts_list) == 0:
+        st.info("No recent workouts found. Start your fitness journey today!")
+        return
+    
+    st.header("Recent Workouts")
+    
+    # Display workouts as a dataframe for easy viewing
+    st.dataframe(workouts_list, use_container_width=True)
+    
+    # Display summary stats
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        total_workouts = len(workouts_list)
+        st.metric("Total Workouts", total_workouts)
+    
+    with col2:
+        # Sum duration if available
+        total_duration = sum([w.get('duration', 0) for w in workouts_list])
+        st.metric("Total Duration (min)", total_duration)
+    
+    with col3:
+        # Sum calories if available
+        total_calories = sum([w.get('calories', 0) for w in workouts_list])
+        st.metric("Total Calories", total_calories)
 
 
 MOTIVATIONAL_IMAGES = [
