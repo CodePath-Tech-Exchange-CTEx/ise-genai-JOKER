@@ -1,284 +1,147 @@
 #############################################################################
 # data_fetcher.py
 #
-# BigQuery-backed data access layer for app.py.
+# This file contains functions to fetch data needed for the app.
 #
-# Required environment setup:
-# - GOOGLE_APPLICATION_CREDENTIALS set to your service account JSON path
-# - BIGQUERY_PROJECT_ID set to your GCP project id (optional if auto-detected)
-# - BIGQUERY_DATASET defaults to "JOKER"
-# - BIGQUERY_LOCATION defaults to "us-central1"
+# You will re-write these functions in Unit 3, and are welcome to alter the
+# data returned in the meantime. We will replace this file with other data when
+# testing earlier units.
 #############################################################################
 
-import os
 import random
-import importlib
-from datetime import datetime
 
-try:
-    from google.cloud import bigquery
-except ImportError as exc:
-    raise ImportError(
-        'google-cloud-bigquery is required. Install with: pip install google-cloud-bigquery'
-    ) from exc
-
-try:
-    genai = importlib.import_module('google.generativeai')
-except ImportError:
-    genai = None
-
-
-# 1. Configuration using Environment Variables
-BILLING_PROJECT_ID = os.getenv('BIGQUERY_BILLING_PROJECT_ID', 'juan-david-buitrago-fiu')
-DATA_PROJECT_ID = os.getenv('BIGQUERY_PROJECT_ID', 'robert-hardy-hu')
-DATASET_NAME = os.getenv('BIGQUERY_DATASET', 'JOKER')
-LOCATION = os.getenv('BIGQUERY_LOCATION', 'US')
-
-# Path to your Service Account JSON key (e.g., 'credentials.json')
-# This should be set in your local .env file
-KEY_PATH = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
-
-# 2. Updated Helper Functions
-def _get_client():
-    """
-    Returns a client using the local JSON key if available, 
-    otherwise falls back to default environment auth.
-    """
-    if KEY_PATH and os.path.exists(KEY_PATH):
-        return bigquery.Client.from_service_account_json(
-            KEY_PATH, 
-            project=BILLING_PROJECT_ID, 
-            location=LOCATION
-        )
-    
-    # Fallback for when the code runs on a real GCP server (App Engine/Cloud Functions)
-    return bigquery.Client(project=BILLING_PROJECT_ID, location=LOCATION)
-
-def _qualified_table(table_name):
-    return f'`{DATA_PROJECT_ID}.{DATASET_NAME}.{table_name}`'
-
-def _query(sql, params=None):
-    client = _get_client()
-    job_config = bigquery.QueryJobConfig(query_parameters=params or [])
-    # Location is required here because the dataset is in 'US'
-    return client.query(sql, job_config=job_config, location=LOCATION).result()
-
-def _format_datetime(value):
-    if value is None:
-        return None
-    if isinstance(value, datetime):
-        return value.strftime('%Y-%m-%d %H:%M:%S')
-    return str(value)
+users = {
+    'user1': {
+        'full_name': 'Remi',
+        'username': 'remi_the_rems',
+        'date_of_birth': '1990-01-01',
+        'profile_image': 'https://upload.wikimedia.org/wikipedia/commons/c/c8/Puma_shoes.jpg',
+        'friends': ['user2', 'user3', 'user4'],
+    },
+    'user2': {
+        'full_name': 'Blake',
+        'username': 'blake',
+        'date_of_birth': '1990-01-01',
+        'profile_image': 'https://upload.wikimedia.org/wikipedia/commons/c/c8/Puma_shoes.jpg',
+        'friends': ['user1'],
+    },
+    'user3': {
+        'full_name': 'Jordan',
+        'username': 'jordanjordanjordan',
+        'date_of_birth': '1990-01-01',
+        'profile_image': 'https://upload.wikimedia.org/wikipedia/commons/c/c8/Puma_shoes.jpg',
+        'friends': ['user1', 'user4'],
+    },
+    'user4': {
+        'full_name': 'Gemmy',
+        'username': 'gems',
+        'date_of_birth': '1990-01-01',
+        'profile_image': 'https://upload.wikimedia.org/wikipedia/commons/c/c8/Puma_shoes.jpg',
+        'friends': ['user1', 'user3'],
+    },
+}
 
 
 def get_user_sensor_data(user_id, workout_id):
-    """Returns a list of timestamped sensor rows for a given workout."""
-    sql = f"""
-        SELECT
-            COALESCE(st.Name, sd.SensorId) AS sensor_type,
-            sd.Timestamp AS timestamp,
-                        sd.SensorValue AS data,
-                        st.Units AS units
-        FROM {_qualified_table('SensorData')} sd
-        LEFT JOIN {_qualified_table('SensorTypes')} st
-          ON sd.SensorId = st.SensorId
-        JOIN {_qualified_table('Workouts')} w
-          ON sd.WorkoutID = w.WorkoutId
-        WHERE w.UserId = @user_id
-          AND sd.WorkoutID = @workout_id
-        ORDER BY sd.Timestamp ASC
+    """Returns a list of timestampped information for a given workout.
+
+    This function currently returns random data. You will re-write it in Unit 3.
     """
-    params = [
-        bigquery.ScalarQueryParameter('user_id', 'STRING', user_id),
-        bigquery.ScalarQueryParameter('workout_id', 'STRING', workout_id),
+    sensor_data = []
+    sensor_types = [
+        'accelerometer',
+        'gyroscope',
+        'pressure',
+        'temperature',
+        'heart_rate',
     ]
-    rows = _query(sql, params)
-    return [
-        {
-            'sensor_type': row['sensor_type'],
-            'timestamp': _format_datetime(row['timestamp']),
-            'data': row['data'],
-            'units': row['units'],
-        }
-        for row in rows
-    ]
+    for index in range(random.randint(5, 100)):
+        random_minute = str(random.randint(0, 59))
+        if len(random_minute) == 1:
+            random_minute = '0' + random_minute
+        timestamp = '2024-01-01 00:' + random_minute + ':00'
+        data = random.random() * 100
+        sensor_type = random.choice(sensor_types)
+        sensor_data.append(
+            {'sensor_type': sensor_type, 'timestamp': timestamp, 'data': data}
+        )
+    return sensor_data
 
 
 def get_user_workouts(user_id):
-    """Returns a list of workouts for the given user."""
-    sql = f"""
-        SELECT
-            WorkoutId,
-            StartTimestamp,
-            EndTimestamp,
-            StartLocationLat,
-            StartLocationLong,
-            EndLocationLat,
-            EndLocationLong,
-            TotalDistance,
-            TotalSteps,
-            CaloriesBurned,
-            DATETIME_DIFF(EndTimestamp, StartTimestamp, MINUTE) AS DurationMinutes
-        FROM {_qualified_table('Workouts')}
-        WHERE UserId = @user_id
-        ORDER BY StartTimestamp DESC
+    """Returns a list of user's workouts.
+
+    This function currently returns random data. You will re-write it in Unit 3.
     """
-    params = [bigquery.ScalarQueryParameter('user_id', 'STRING', user_id)]
-    rows = _query(sql, params)
     workouts = []
-    for row in rows:
-        workouts.append(
-            {
-                'workout_id': row['WorkoutId'],
-                'start_timestamp': _format_datetime(row['StartTimestamp']),
-                'end_timestamp': _format_datetime(row['EndTimestamp']),
-                'start_lat_lng': (row['StartLocationLat'], row['StartLocationLong']),
-                'end_lat_lng': (row['EndLocationLat'], row['EndLocationLong']),
-                'distance': row['TotalDistance'],
-                'steps': row['TotalSteps'],
-                'calories_burned': row['CaloriesBurned'],
-                # These aliases match existing UI helpers in modules.py.
-                'duration': row['DurationMinutes'] or 0,
-                'calories': row['CaloriesBurned'] or 0,
-            }
+    for index in range(random.randint(1, 3)):
+        random_lat_lng_1 = (
+            1 + random.randint(0, 100) / 100,
+            4 + random.randint(0, 100) / 100,
         )
+        random_lat_lng_2 = (
+            1 + random.randint(0, 100) / 100,
+            4 + random.randint(0, 100) / 100,
+        )
+        workouts.append({
+            'workout_id': f'workout{index}',
+            'start_timestamp': '2024-01-01 00:00:00',
+            'end_timestamp': '2024-01-01 00:30:00',
+            'start_lat_lng': random_lat_lng_1,
+            'end_lat_lng': random_lat_lng_2,
+            'distance': random.randint(0, 200) / 10.0,
+            'steps': random.randint(0, 20000),
+            'calories_burned': random.randint(0, 100),
+        })
     return workouts
 
 
 def get_user_profile(user_id):
-    """Returns profile information for the given user."""
-    profile_sql = f"""
-        SELECT UserId, Name, Username, ImageUrl, DateOfBirth
-        FROM {_qualified_table('Users')}
-        WHERE UserId = @user_id
-        LIMIT 1
-    """
-    friend_sql = f"""
-        SELECT
-            CASE
-                WHEN UserId1 = @user_id THEN UserId2
-                ELSE UserId1
-            END AS friend_id
-        FROM {_qualified_table('Friends')}
-        WHERE UserId1 = @user_id OR UserId2 = @user_id
-    """
+    """Returns information about the given user.
 
-    params = [bigquery.ScalarQueryParameter('user_id', 'STRING', user_id)]
-    profile_rows = list(_query(profile_sql, params))
-    if not profile_rows:
+    This function currently returns random data. You will re-write it in Unit 3.
+    """
+    if user_id not in users:
         raise ValueError(f'User {user_id} not found.')
-
-    profile = profile_rows[0]
-    friend_rows = _query(friend_sql, params)
-    friends = [row['friend_id'] for row in friend_rows]
-
-    return {
-        'full_name': profile['Name'],
-        'username': profile['Username'],
-        'date_of_birth': str(profile['DateOfBirth']),
-        'profile_image': profile['ImageUrl'],
-        'friends': friends,
-    }
+    return users[user_id]
 
 
 def get_user_posts(user_id):
-    """Returns a list of posts authored by the given user."""
-    sql = f"""
-        SELECT PostId, AuthorId, Timestamp, ImageUrl, Content
-        FROM {_qualified_table('Posts')}
-        WHERE AuthorId = @user_id
-        ORDER BY Timestamp DESC
+    """Returns a list of a user's posts.
+
+    This function currently returns random data. You will re-write it in Unit 3.
     """
-    params = [bigquery.ScalarQueryParameter('user_id', 'STRING', user_id)]
-    rows = _query(sql, params)
-    return [
-        {
-            'user_id': row['AuthorId'],
-            'post_id': row['PostId'],
-            'timestamp': _format_datetime(row['Timestamp']),
-            'content': row['Content'],
-            'image': row['ImageUrl'],
-        }
-        for row in rows
-    ]
+    content = random.choice([
+        'Had a great workout today!',
+        'The AI really motivated me to push myself further, I ran 10 miles!',
+    ])
+    return [{
+        'user_id': user_id,
+        'post_id': 'post1',
+        'timestamp': '2024-01-01 00:00:00',
+        'content': content,
+        'image': 'image_url',
+    }]
 
 
 def get_genai_advice(user_id):
-    """Returns recent advice generated from user profile and workouts."""
-    sql = f"""
-        SELECT WorkoutId, StartTimestamp, TotalDistance, TotalSteps, CaloriesBurned
-        FROM {_qualified_table('Workouts')}
-        WHERE UserId = @user_id
-        ORDER BY StartTimestamp DESC
-        LIMIT 1
+    """Returns the most recent advice from the genai model.
+
+    This function currently returns random data. You will re-write it in Unit 3.
     """
-    params = [bigquery.ScalarQueryParameter('user_id', 'STRING', user_id)]
-    rows = list(_query(sql, params))
-    profile = get_user_profile(user_id)
-
-    if not rows:
-        content = 'No workouts found yet. Log your first session and I will tailor your advice.'
-        return {
-            'advice_id': 'advice-no-workout',
-            'timestamp': _format_datetime(datetime.utcnow()),
-            'content': content,
-            'image': random.choice([None, random.choice(MOTIVATIONAL_IMAGES)]),
-        }
-
-    latest = rows[0]
-    default_content = (
-        f"Great momentum, {profile['username']}. Your latest workout covered "
-        f"{latest['TotalDistance']} miles, {latest['TotalSteps']} steps, and "
-        f"{latest['CaloriesBurned']} calories burned. "
-        'Try adding one extra interval in your next session.'
-    )
-
-    content = default_content
-    if genai and GEMINI_API_KEY:
-        prompt = (
-            'You are a fitness coach. Write 2-3 encouraging sentences using this data. '
-            f"User: {profile['username']}. "
-            f"Latest workout: distance={latest['TotalDistance']}, "
-            f"steps={latest['TotalSteps']}, calories={latest['CaloriesBurned']}."
-        )
-        try:
-            genai.configure(api_key=GEMINI_API_KEY)
-            model = genai.GenerativeModel('gemini-2.0-flash')
-            response = model.generate_content(prompt)
-            if response and getattr(response, 'text', None):
-                content = response.text.strip()
-        except Exception:
-            content = default_content
-
+    advice = random.choice([
+        'Your heart rate indicates you can push yourself further. You got this!',
+        "You're doing great! Keep up the good work.",
+        'You worked hard yesterday, take it easy today.',
+        'You have burned 100 calories so far today!',
+    ])
+    image = random.choice([
+        'https://plus.unsplash.com/premium_photo-1669048780129-051d670fa2d1?q=80&w=3870&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+        None,
+    ])
     return {
-        'advice_id': f"advice-{latest['WorkoutId']}",
-        'timestamp': _format_datetime(latest['StartTimestamp']),
-        'content': content,
-        'image': random.choice([None, random.choice(MOTIVATIONAL_IMAGES)]),
-    }
-
-def create_user_post(author_id, content, image_url=''):
-    """Inserts a new post row into Posts and returns the inserted post data."""
-    post_id = f"post-{author_id}-{int(datetime.utcnow().timestamp())}"
-    created_at = datetime.utcnow()
-
-    sql = f"""
-        INSERT INTO {_qualified_table('Posts')} (PostId, AuthorId, Timestamp, ImageUrl, Content)
-        VALUES (@post_id, @author_id, @timestamp, @image_url, @content)
-    """
-    params = [
-        bigquery.ScalarQueryParameter('post_id', 'STRING', post_id),
-        bigquery.ScalarQueryParameter('author_id', 'STRING', author_id),
-        bigquery.ScalarQueryParameter('timestamp', 'TIMESTAMP', created_at),
-        bigquery.ScalarQueryParameter('image_url', 'STRING', image_url),
-        bigquery.ScalarQueryParameter('content', 'STRING', content),
-    ]
-    _query(sql, params)
-
-    return {
-        'user_id': author_id,
-        'post_id': post_id,
-        'timestamp': _format_datetime(created_at),
-        'content': content,
-        'image': image_url,
+        'advice_id': 'advice1',
+        'timestamp': '2024-01-01 00:00:00',
+        'content': advice,
+        'image': image,
     }

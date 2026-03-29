@@ -43,7 +43,7 @@ def display_app_page():
     st.sidebar.title("Menu")
     selection = st.sidebar.radio(
         "Go to",
-        ["Home", "Posts", "Activity Summary", "Recent Workouts", "AI Trainer Advice", "Community"]
+        ["Home", "Posts", "Activity Summary", "Recent Workouts", "AI Trainer Advice"]
     )
 
     if selection == "Home":
@@ -74,9 +74,6 @@ def display_app_page():
         st.divider()
         st.subheader("Today's going to be a great day!")
         st.write("👈 Use the menu to dive deeper into your stats or community posts.")
-    
-    elif selection == "Community":
-        display_community_page(userId)
 
     elif selection == "Posts":
         st.header('Posts')
