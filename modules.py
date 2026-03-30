@@ -481,6 +481,4 @@ def display_genai_advice(timestamp, content, image):
 </body>
 </html>"""
  
-    # components.html renders in a real iframe so CSS/animations work correctly.
-    # height = 260px hero + ~220px body content + padding
     components.html(html, height=560)
