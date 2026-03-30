@@ -115,15 +115,17 @@ display_activity_summary(mock_workouts)
 
     def test_activity_summary_under_60_minutes(self):
         """Tests that durations under 60 mins display as minutes only."""
-        at = AppTest.from_string("""
+    at = AppTest.from_string("""
 from modules import display_activity_summary
 mock_workouts = [{"duration": 45, "calories": 200}]
 display_activity_summary(mock_workouts)
 """)
-        at.run()
-        html_output = at.markdown[0].value
-        self.assertIn("45m", html_output)
-        self.assertNotIn("h", html_output)
+    at.run()
+    html_output = at.markdown[0].value
+    self.assertIn("45m", html_output)
+    # Check it does NOT show an hour format like "1h" or "0h"
+    self.assertNotIn("1h", html_output)
+    self.assertNotIn("0h", html_output)
 
 class TestDisplayGenAiAdvice(unittest.TestCase):
     """Tests the display_genai_advice function."""
