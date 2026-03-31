@@ -1,147 +1,137 @@
-#############################################################################
-# data_fetcher.py
-#
-# This file contains functions to fetch data needed for the app.
-#
-# You will re-write these functions in Unit 3, and are welcome to alter the
-# data returned in the meantime. We will replace this file with other data when
-# testing earlier units.
-#############################################################################
-
+from google.cloud import bigquery
 import random
+from datetime import datetime
+import google.generativeai as genai
 
-users = {
-    'user1': {
-        'full_name': 'Remi',
-        'username': 'remi_the_rems',
-        'date_of_birth': '1990-01-01',
-        'profile_image': 'https://upload.wikimedia.org/wikipedia/commons/c/c8/Puma_shoes.jpg',
-        'friends': ['user2', 'user3', 'user4'],
-    },
-    'user2': {
-        'full_name': 'Blake',
-        'username': 'blake',
-        'date_of_birth': '1990-01-01',
-        'profile_image': 'https://upload.wikimedia.org/wikipedia/commons/c/c8/Puma_shoes.jpg',
-        'friends': ['user1'],
-    },
-    'user3': {
-        'full_name': 'Jordan',
-        'username': 'jordanjordanjordan',
-        'date_of_birth': '1990-01-01',
-        'profile_image': 'https://upload.wikimedia.org/wikipedia/commons/c/c8/Puma_shoes.jpg',
-        'friends': ['user1', 'user4'],
-    },
-    'user4': {
-        'full_name': 'Gemmy',
-        'username': 'gems',
-        'date_of_birth': '1990-01-01',
-        'profile_image': 'https://upload.wikimedia.org/wikipedia/commons/c/c8/Puma_shoes.jpg',
-        'friends': ['user1', 'user3'],
-    },
-}
+GEMINI_API_KEY = "AIzaSyCUwvjVDxFk75RHFbJ9ljnIvYnhilv6xqM"
+client = bigquery.Client()
 
 
 def get_user_sensor_data(user_id, workout_id):
     """Returns a list of timestampped information for a given workout.
-
-    This function currently returns random data. You will re-write it in Unit 3.
     """
-    sensor_data = []
-    sensor_types = [
-        'accelerometer',
-        'gyroscope',
-        'pressure',
-        'temperature',
-        'heart_rate',
-    ]
-    for index in range(random.randint(5, 100)):
-        random_minute = str(random.randint(0, 59))
-        if len(random_minute) == 1:
-            random_minute = '0' + random_minute
-        timestamp = '2024-01-01 00:' + random_minute + ':00'
-        data = random.random() * 100
-        sensor_type = random.choice(sensor_types)
-        sensor_data.append(
-            {'sensor_type': sensor_type, 'timestamp': timestamp, 'data': data}
-        )
-    return sensor_data
+    query = f"""
+        SELECT t.Name as sensor_type, d.Timestamp as timestamp, 
+               d.SensorValue as data, t.Units as units
+        FROM `robert-hardy-hu.JOKER.SensorData` d
+        JOIN `robert-hardy-hu.JOKER.SensorTypes` t ON d.SensorId = t.SensorId
+        WHERE d.WorkoutID = '{workout_id}'
+        ORDER BY d.Timestamp ASC
+    """
+
+    results = client.query(query).result()
+    return [dict(row) for row in results]
 
 
 def get_user_workouts(user_id):
     """Returns a list of user's workouts.
-
-    This function currently returns random data. You will re-write it in Unit 3.
     """
+    query = f"""
+        SELECT WorkoutId as workout_id, StartTimestamp as start_timestamp, 
+               EndTimestamp as end_timestamp, StartLocationLat as start_lat_lng_lat, 
+               StartLocationLong as start_lat_lng_lng, TotalDistance as distance, 
+               TotalSteps as steps, CaloriesBurned as calories_burned
+        FROM `robert-hardy-hu.JOKER.Workouts`
+        WHERE UserId = '{user_id}'
+        ORDER BY StartTimestamp DESC
+    """
+
+    results = client.query(query).result()
+    
     workouts = []
-    for index in range(random.randint(1, 3)):
-        random_lat_lng_1 = (
-            1 + random.randint(0, 100) / 100,
-            4 + random.randint(0, 100) / 100,
-        )
-        random_lat_lng_2 = (
-            1 + random.randint(0, 100) / 100,
-            4 + random.randint(0, 100) / 100,
-        )
-        workouts.append({
-            'workout_id': f'workout{index}',
-            'start_timestamp': '2024-01-01 00:00:00',
-            'end_timestamp': '2024-01-01 00:30:00',
-            'start_lat_lng': random_lat_lng_1,
-            'end_lat_lng': random_lat_lng_2,
-            'distance': random.randint(0, 200) / 10.0,
-            'steps': random.randint(0, 20000),
-            'calories_burned': random.randint(0, 100),
-        })
+    for row in results:
+        w = dict(row)
+        if w['start_timestamp'] and w['end_timestamp']:
+            delta = w['end_timestamp'] - w['start_timestamp']
+            w['duration'] = int(delta.total_seconds() / 60)
+        workouts.append(w)
     return workouts
 
 
 def get_user_profile(user_id):
     """Returns information about the given user.
-
-    This function currently returns random data. You will re-write it in Unit 3.
     """
-    if user_id not in users:
-        raise ValueError(f'User {user_id} not found.')
-    return users[user_id]
+    query = f"""
+        SELECT 
+            Name as full_name, 
+            Username as username, 
+            DateOfBirth as date_of_birth, 
+            ImageUrl as profile_image 
+        FROM `robert-hardy-hu.JOKER.Users` 
+        WHERE UserId = '{user_id}'
+    """
+    results = list(client.query(query).result())
+    
+    if not results:
+        return None
+        
+    profile = dict(results[0])
+    
+    friends_query = f"SELECT UserId2 FROM `robert-hardy-hu.JOKER.Friends` WHERE UserId1 = '{user_id}'"
+    friends_results = client.query(friends_query).result()
+    profile['friends'] = [row['UserId2'] for row in friends_results]
+    
+    return profile
 
 
 def get_user_posts(user_id):
     """Returns a list of a user's posts.
-
-    This function currently returns random data. You will re-write it in Unit 3.
     """
-    content = random.choice([
-        'Had a great workout today!',
-        'The AI really motivated me to push myself further, I ran 10 miles!',
-    ])
-    return [{
-        'user_id': user_id,
-        'post_id': 'post1',
-        'timestamp': '2024-01-01 00:00:00',
-        'content': content,
-        'image': 'image_url',
-    }]
+    query = f"""
+        SELECT PostId as post_id, AuthorId as user_id, Timestamp as timestamp, 
+               ImageUrl as image, Content as content
+        FROM `robert-hardy-hu.JOKER.Posts`
+        WHERE AuthorId = '{user_id}'
+        ORDER BY Timestamp DESC
+    """
+
+    results = client.query(query).result()
+    return [dict(row) for row in results]
 
 
 def get_genai_advice(user_id):
-    """Returns the most recent advice from the genai model.
-
-    This function currently returns random data. You will re-write it in Unit 3.
     """
-    advice = random.choice([
-        'Your heart rate indicates you can push yourself further. You got this!',
-        "You're doing great! Keep up the good work.",
-        'You worked hard yesterday, take it easy today.',
-        'You have burned 100 calories so far today!',
-    ])
-    image = random.choice([
-        'https://plus.unsplash.com/premium_photo-1669048780129-051d670fa2d1?q=80&w=3870&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-        None,
-    ])
+    Fetches personalized fitness advice from Gemini based on user stats.
+    """
+    # 1. Gather the "Information" to base the advice on
+    workouts = get_user_workouts(user_id)
+    total_cals = sum(w.get('calories_burned', 0) for w in workouts)
+    total_steps = sum(w.get('steps', 0) for w in workouts)
+   
+    # 2. Setup the Gemini Model
+    genai.configure(api_key=GEMINI_API_KEY)
+    model = genai.GenerativeModel("gemini-2.5-flash-lite")
+   
+    # 3. Craft a prompt that tells the AI about the user
+    prompt = f"""
+        You are a supportive personal trainer.
+        A user has burned {total_cals} calories and taken {total_steps} steps in their recent workouts.
+        Give them one specific, encouraging piece of fitness advice in 2 sentences or less.
+    """
+   
+    try:
+        response = model.generate_content(prompt)
+        advice_content = response.text.strip()
+    except Exception as e:
+        advice_content = "Keep pushing! Every step counts toward your goals."
+
+
+    # 4. Handle optional images (e.g., 60% chance of an image)
+    MOTIVATIONAL_IMAGES = [
+        "https://images.unsplash.com/photo-1517836357463-d25dfeac3438",
+        "https://images.unsplash.com/photo-1599058917212-d750089bc07e",
+        "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b"
+    ]
+   
+    # Logic: Only pick an image if random check passes
+    image_url = random.choice(MOTIVATIONAL_IMAGES) if random.random() > 0.4 else None
+
+
     return {
-        'advice_id': 'advice1',
-        'timestamp': '2024-01-01 00:00:00',
-        'content': advice,
-        'image': image,
+        'advice_id': f'genai_{random.randint(100, 999)}',
+        'timestamp': datetime.now(),
+        'content': advice_content,
+        'image': image_url,
     }
+
+

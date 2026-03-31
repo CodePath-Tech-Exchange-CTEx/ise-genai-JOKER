@@ -61,8 +61,8 @@ def display_app_page():
             st.subheader("Community")
             posts = get_user_posts(userId)
             if posts:
-                # show a snippet of the most recent post
-                st.write(f"📢 Latest: *{posts[0]['content'][:50]} ...*")
+                    content = posts[0].get('content') or "No text content"
+                    st.write(f"📢 Latest: *{content[:50]} ...*")
 
         with col3:
             st.subheader("Recent Activity")
@@ -125,7 +125,7 @@ Keep the tone like a knowledgeable coach who knows them personally. Be specific 
             with st.spinner("Getting your personalised advice..."):
                 try:
                     genai.configure(api_key=GEMINI_API_KEY)
-                    model  = genai.GenerativeModel("gemini-2.0-flash")
+                    model  = genai.GenerativeModel("gemini-2.5-flash-lite")
                     response = model.generate_content(prompt)
                     ai_content = response.text
                 except Exception as e:

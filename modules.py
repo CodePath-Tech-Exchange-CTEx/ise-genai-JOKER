@@ -141,7 +141,7 @@ def display_activity_summary(workouts_list):
     total_workouts = str(len(workouts_list)) + ' sessions' if len(workouts_list) > 1 else str(len(workouts_list)) + ' session'
     total_minutes = sum(w.get('duration', 0) for w in workouts_list)
     time_val = f"{total_minutes // 60}h {total_minutes % 60}m" if total_minutes > 60 else f"{total_minutes}m"
-    total_calories = sum(w.get('calories', 0) for w in workouts_list)
+    total_calories = sum(w.get('calories_burned', 0) for w in workouts_list)
     calorie_goal = 600
 
     
@@ -275,7 +275,7 @@ def display_recent_workouts(workouts_list):
     
     with col3:
         # Sum calories if available
-        total_calories = sum([w.get('calories', 0) for w in workouts_list])
+        total_calories = sum([w.get('calories_burned', 0) for w in workouts_list])
         st.metric("Total Calories", total_calories)
 
 
