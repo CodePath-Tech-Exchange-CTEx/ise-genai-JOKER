@@ -6,14 +6,17 @@ from data_fetcher import (
     get_user_posts, 
     get_user_workouts, 
     get_user_profile,
+    get_bq_client
     # get_genai_advice
 )
 
 class TestDataFetcher(unittest.TestCase):
 
-    @patch('data_fetcher.client')
+    @patch('data_fetcher.get_bq_client')
     def test_get_user_sensor_data_structure(self, mock_client):
         """Tests that sensor data returns the correct keys and joined units."""
+        fake_bq_client = MagicMock()
+        mock_client.return_value = fake_bq_client
         mock_row = {
             'sensor_type': 'Heart Rate',
             'timestamp': datetime(2026, 3, 29, 8, 15, 0),
@@ -22,7 +25,7 @@ class TestDataFetcher(unittest.TestCase):
         }
         mock_query_job = MagicMock()
         mock_query_job.result.return_value = [mock_row]
-        mock_client.query.return_value = mock_query_job
+        fake_bq_client.query.return_value = mock_query_job
 
         results = get_user_sensor_data('user1', 'w_001')
         
@@ -30,9 +33,11 @@ class TestDataFetcher(unittest.TestCase):
         self.assertEqual(results[0]['sensor_type'], 'Heart Rate')
         self.assertEqual(results[0]['units'], 'bpm')
 
-    @patch('data_fetcher.client')
+    @patch('data_fetcher.get_bq_client')
     def test_get_user_posts_mapping(self, mock_client):
         """Tests that posts are mapped correctly for the display_post module."""
+        fake_bq_client = MagicMock()
+        mock_client.return_value = fake_bq_client
         mock_row = {
             'post_id': 'p_101',
             'user_id': 'user1',
@@ -42,16 +47,18 @@ class TestDataFetcher(unittest.TestCase):
         }
         mock_query_job = MagicMock()
         mock_query_job.result.return_value = [mock_row]
-        mock_client.query.return_value = mock_query_job
+        fake_bq_client.query.return_value = mock_query_job
 
         results = get_user_posts('user1')
         
         self.assertEqual(results[0]['post_id'], 'p_101')
         self.assertTrue('content' in results[0])
 
-    @patch('data_fetcher.client')
+    @patch('data_fetcher.get_bq_client')
     def test_get_user_workouts_schema(self, mock_client):
         """Tests the full workout schema matches the UI requirements."""
+        fake_bq_client = MagicMock()
+        mock_client.return_value = fake_bq_client
         mock_row = {
             'workout_id': 'w_001',
             'start_timestamp': datetime(2026, 3, 29, 8, 0, 0),
@@ -64,17 +71,18 @@ class TestDataFetcher(unittest.TestCase):
         }
         mock_query_job = MagicMock()
         mock_query_job.result.return_value = [mock_row]
-        mock_client.query.return_value = mock_query_job
+        fake_bq_client.query.return_value = mock_query_job
 
         results = get_user_workouts('user1')
         
         self.assertEqual(results[0]['duration'], 60)
         self.assertEqual(results[0]['calories_burned'], 450.0)
 
-    @patch('data_fetcher.client')
+    @patch('data_fetcher.get_bq_client')
     def test_get_user_profile_full_mapping(self, mock_client):
         """Tests that user profile correctly merges user data and friends list."""
-
+        fake_bq_client = MagicMock()
+        mock_client.return_value = fake_bq_client
         user_row = {
             'full_name': 'Remi',
             'username': 'remi_the_rems',
@@ -90,7 +98,7 @@ class TestDataFetcher(unittest.TestCase):
         mock_friends_job = MagicMock()
         mock_friends_job.result.return_value = friend_rows
         
-        mock_client.query.side_effect = [mock_user_job, mock_friends_job]
+        fake_bq_client.query.side_effect = [mock_user_job, mock_friends_job]
 
         result = get_user_profile('user1')
 
@@ -102,9 +110,11 @@ class TestDataFetcher(unittest.TestCase):
         self.assertIn('user2', result['friends'])
         self.assertIn('user3', result['friends'])
 
-    @patch('data_fetcher.client')
+    @patch('data_fetcher.get_bq_client')
     def test_get_user_workouts_duration_calculation(self, mock_client):
         """Tests that duration is correctly calculated from timestamps."""
+        fake_bq_client = MagicMock()
+        mock_client.return_value = fake_bq_client        
         # 1. Setup Mock Row Data
         start = datetime(2024, 7, 29, 7, 0, 0)
         end = datetime(2024, 7, 29, 8, 0, 0) # Exactly 60 minutes
@@ -122,7 +132,7 @@ class TestDataFetcher(unittest.TestCase):
 
         mock_query_job = MagicMock()
         mock_query_job.result.return_value = [mock_row]
-        mock_client.query.return_value = mock_query_job
+        fake_bq_client.query.return_value = mock_query_job
 
         results = get_user_workouts('user1')
 
@@ -130,19 +140,23 @@ class TestDataFetcher(unittest.TestCase):
         self.assertEqual(results[0]['duration'], 60)
         self.assertEqual(results[0]['workout_id'], 'w1')
 
-    @patch('data_fetcher.client')
+    @patch('data_fetcher.get_bq_client')
     def test_get_user_profile_none(self, mock_client):
         """Tests that None is returned if no user is found."""
+        fake_bq_client = MagicMock()
+        mock_client.return_value = fake_bq_client
         mock_query_job = MagicMock()
         mock_query_job.result.return_value = []
-        mock_client.query.return_value = mock_query_job
+        fake_bq_client.query.return_value = mock_query_job
 
         result = get_user_profile('non_existent_user')
         self.assertIsNone(result)
 
-    @patch('data_fetcher.client')
+    @patch('data_fetcher.get_bq_client')
     def test_get_user_workouts_missing_end_time(self, mock_client):
         """Tests that workouts with missing end times don't crash the duration calc."""
+        fake_bq_client = MagicMock()
+        mock_client.return_value = fake_bq_client
         mock_row = {
             'workout_id': 'w2',
             'start_timestamp': datetime(2024, 7, 29, 7, 0, 0),
@@ -151,7 +165,7 @@ class TestDataFetcher(unittest.TestCase):
         }
         mock_query_job = MagicMock()
         mock_query_job.result.return_value = [mock_row]
-        mock_client.query.return_value = mock_query_job
+        fake_bq_client.query.return_value = mock_query_job
 
         results = get_user_workouts('user1')
         
@@ -159,21 +173,25 @@ class TestDataFetcher(unittest.TestCase):
         self.assertEqual(results[0]['distance'], 2.0)
 
 
-    @patch('data_fetcher.client')
+    @patch('data_fetcher.get_bq_client')
     def test_get_user_workouts_empty(self, mock_client):
         """Tests that an empty workout list is returned gracefully."""
+        fake_bq_client = MagicMock()
+        mock_client.return_value = fake_bq_client
         mock_query_job = MagicMock()
         mock_query_job.result.return_value = [] 
-        mock_client.query.return_value = mock_query_job
+        fake_bq_client.query.return_value = mock_query_job
 
         results = get_user_workouts('new_user_with_no_history')
         
         self.assertIsInstance(results, list)
         self.assertEqual(len(results), 0)
 
-    @patch('data_fetcher.client')
+    @patch('data_fetcher.get_bq_client')
     def test_get_user_profile_no_friends(self, mock_client):
         """Tests that a user profile is returned correctly even with zero friends."""
+        fake_bq_client = MagicMock()
+        mock_client.return_value = fake_bq_client
         user_row = {
             'full_name': 'Solo Traveler',
             'username': 'solo',
@@ -188,7 +206,7 @@ class TestDataFetcher(unittest.TestCase):
         mock_query_job_friends.result.return_value = []
         
         # side_effect allows the mock to return different things for the 1st vs 2nd call
-        mock_client.query.side_effect = [mock_query_job_user, mock_query_job_friends]
+        fake_bq_client.query.side_effect = [mock_query_job_user, mock_query_job_friends]
 
         result = get_user_profile('user_with_no_friends')
 

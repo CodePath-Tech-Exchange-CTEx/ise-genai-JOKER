@@ -4,12 +4,13 @@ from datetime import datetime
 import google.generativeai as genai
 
 GEMINI_API_KEY = "AIzaSyCUwvjVDxFk75RHFbJ9ljnIvYnhilv6xqM"
-client = bigquery.Client()
-
+def get_bq_client():
+    return bigquery.Client()
 
 def get_user_sensor_data(user_id, workout_id):
     """Returns a list of timestampped information for a given workout.
     """
+    client = get_bq_client()
     query = f"""
         SELECT t.Name as sensor_type, d.Timestamp as timestamp, 
                d.SensorValue as data, t.Units as units
@@ -26,6 +27,7 @@ def get_user_sensor_data(user_id, workout_id):
 def get_user_workouts(user_id):
     """Returns a list of user's workouts.
     """
+    client = get_bq_client()
     query = f"""
         SELECT WorkoutId as workout_id, StartTimestamp as start_timestamp, 
                EndTimestamp as end_timestamp, StartLocationLat as start_lat_lng_lat, 
@@ -51,6 +53,7 @@ def get_user_workouts(user_id):
 def get_user_profile(user_id):
     """Returns information about the given user.
     """
+    client = get_bq_client()
     query = f"""
         SELECT 
             Name as full_name, 
@@ -77,6 +80,7 @@ def get_user_profile(user_id):
 def get_user_posts(user_id):
     """Returns a list of a user's posts.
     """
+    client = get_bq_client()
     query = f"""
         SELECT PostId as post_id, AuthorId as user_id, Timestamp as timestamp, 
                ImageUrl as image, Content as content
