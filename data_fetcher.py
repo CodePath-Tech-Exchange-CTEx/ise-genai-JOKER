@@ -138,4 +138,31 @@ def get_genai_advice(user_id):
         'image': image_url,
     }
 
+def create_user_post(author_id, content, image_url=''):
+    """Inserts a new post row into Posts and returns the inserted post data."""
+    post_id = f"post-{author_id}-{int(datetime.utcnow().timestamp())}"
+    created_at = datetime.utcnow()
 
+    client = get_bq_client()
+    query = """
+        INSERT INTO `robert-hardy-hu.JOKER.Posts` (PostId, AuthorId, Timestamp, ImageUrl, Content)
+        VALUES (@post_id, @author_id, @timestamp, @image_url, @content)
+    """
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter('post_id', 'STRING', post_id),
+            bigquery.ScalarQueryParameter('author_id', 'STRING', author_id),
+            bigquery.ScalarQueryParameter('timestamp', 'TIMESTAMP', created_at),
+            bigquery.ScalarQueryParameter('image_url', 'STRING', image_url),
+            bigquery.ScalarQueryParameter('content', 'STRING', content),
+        ]
+    )
+    client.query(query, job_config=job_config).result()
+
+    return {
+        'user_id': author_id,
+        'post_id': post_id,
+        'timestamp': created_at.strftime('%Y-%m-%d %H:%M:%S UTC'),
+        'content': content,
+        'image': image_url,
+    }

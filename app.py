@@ -11,6 +11,8 @@ import random
 import google.generativeai as genai
 from modules import display_my_custom_component, display_post, display_genai_advice, display_activity_summary, display_recent_workouts
 from data_fetcher import get_user_posts, get_genai_advice, get_user_profile, get_user_sensor_data, get_user_workouts
+from community_page import display_community_page
+from activity_page import display_activity_page
 
 GEMINI_API_KEY = "AIzaSyCUwvjVDxFk75RHFbJ9ljnIvYnhilv6xqM"
 userId = 'user1'
@@ -43,7 +45,7 @@ def display_app_page():
     st.sidebar.title("Menu")
     selection = st.sidebar.radio(
         "Go to",
-        ["Home", "Posts", "Activity Summary", "Recent Workouts", "AI Trainer Advice"]
+        ["Home", "Posts", "Activity Summary", "Recent Workouts", "AI Trainer Advice", "Community", "Activity"]
     )
 
     if selection == "Home":
@@ -91,6 +93,14 @@ def display_app_page():
         st.header('Activity Summary')
         workouts = get_user_workouts(userId)
         display_activity_summary(workouts)
+    
+    elif selection == "Community":
+        #st.header('Community')
+        display_community_page(userId)
+    
+    elif selection == "Activity":
+        #st.header('Activity')
+        display_activity_page(userId)
 
     elif selection == "Recent Workouts":
         workouts = get_user_workouts(userId)
