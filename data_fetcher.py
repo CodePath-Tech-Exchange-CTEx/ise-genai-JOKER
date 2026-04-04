@@ -152,7 +152,7 @@ def create_user_post(author_id, content, image_url=''):
         query_parameters=[
             bigquery.ScalarQueryParameter('post_id', 'STRING', post_id),
             bigquery.ScalarQueryParameter('author_id', 'STRING', author_id),
-            bigquery.ScalarQueryParameter('timestamp', 'TIMESTAMP', created_at),
+            bigquery.ScalarQueryParameter('timestamp', 'DATETIME', created_at),
             bigquery.ScalarQueryParameter('image_url', 'STRING', image_url),
             bigquery.ScalarQueryParameter('content', 'STRING', content),
         ]
