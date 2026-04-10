@@ -1,0 +1,24 @@
+Feature 1: Posts, like, and comment
+
+Intro: The participant in this test is a friend from Juan's university, his name is Jordy and he is a computer science student.
+
+Tasks: Navigate to the posts section. Find a post, then like the post and leave a comment in the post.
+
+Notes: The participant was able to navigate to the posts menu fast. Once in the posts section he took a while to be able to leave a like on a post. Similarly, it took him some time to figure out how to open the comment creation window in order to leave a comment. 
+
+Feedback: The participant said that navigating the menu was easy, since it is clearly visible all the time on the left pane and the names for each section are clear. He mentioned some confusion when it was time to leave a like, he said that there is no clear button for liking or commenting a post, yet the posts were clearly visible in his opinion. Also when creating a comment he said it took a while to find the option to cancel the comment creation, the X button was too small in his opinion. He also mentioned that when the comment button is clicked it opens the new comment creation window immediately and there is no way to see previous comments. 
+
+Results: We found that the main issues during this test were the buttons involved in the task that we gave to our participant. This might be because we did not create clearly defined buttons, but instead the text displays in a different color and in a way we assumed that the user would know that they can click that. To fix the like and comment issues we can put the "like" and "comment" text inside a clearly defined box, to visually create a button that stands out and like that do not generate any confusion for the user. In the case of the button to cancel the comment creation, rather than using an X at the corner, we can put a cancel button right next to the post button so that it is more accessible and visible in the case that the user wants to cancel the comment creation. Also we need to change the logic and when the user clicks comments it should display old comments and then give the option to add a new one. 
+
+Feature 2: AI Trainer Advice
+
+Intro: The participant in this test is a friend from Robert, he is a business student.
+
+Task: Navigate to the AI Trainer section and interact with this function.
+
+Notes: He was able to find the AI Trainer section fast. Once there he had some issues interacting with the AI trainer and he was not sure about what to do. 
+
+Feedback: He said the menu is clear and easy to navigate so going to any specific section was not an issue. He mentioned that this AI Trainer feature did not have any way of interacting or using it aside from the image and advice that it displayed. 
+
+Results: We found that overall it is easy to navigate our app, and users do not seem to have issues finding the different sections that are available. We noticed that the AI Trainer section is just a view section, it does not have any interactive functionality for the users to use. We can maybe add a button that generates new advice every time a user clicks it. 
+
