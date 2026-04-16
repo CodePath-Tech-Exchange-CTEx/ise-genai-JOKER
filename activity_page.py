@@ -64,6 +64,7 @@ def display_activity_page(user_id):
             timestamp=created_post['timestamp'],
             content=created_post['content'],
             post_image=created_post.get('image', ''),
+            commenter_username=profile.get('username', user_id),
         )
 
 

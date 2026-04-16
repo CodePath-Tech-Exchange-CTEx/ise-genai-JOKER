@@ -87,7 +87,8 @@ def display_app_page():
                 user_image=user_profile['profile_image'],
                 timestamp=post['timestamp'],
                 content=post['content'],
-                post_image=post['image'])
+                post_image=post['image'],
+                commenter_username=user_profile['username'])
 
     elif selection == "Activity Summary":
         st.header('Activity Summary')
