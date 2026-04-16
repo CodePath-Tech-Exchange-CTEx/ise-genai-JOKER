@@ -1,4 +1,6 @@
 import unittest
+import sys
+import types
 from datetime import datetime
 from unittest.mock import patch
 from streamlit.testing.v1 import AppTest
@@ -74,12 +76,13 @@ display_post(
 """)
         at.run()
         self.assertFalse(at.exception)
-        self.assertEqual(len(at.markdown), 1)
+        self.assertGreaterEqual(len(at.markdown), 2)
         html_output = at.markdown[0].value
         self.assertIn("testuser", html_output)
         self.assertIn("This is a test post.", html_output)
         self.assertIn("Likes", html_output)
-        self.assertIn("Comments", html_output)
+        button_labels = [button.label for button in at.button]
+        self.assertTrue(any("Comments" in label for label in button_labels))
 
     def test_post_with_mock_data_fetcher_post(self):
         """Tests display_post using data matching get_user_posts() return format."""
@@ -250,7 +253,19 @@ class TestFullAppMock(unittest.TestCase):
 
     def _run_with_mocks(self, page=None):
         """Runs app.py with all data_fetcher functions mocked out."""
-        with patch("data_fetcher.get_user_profile", return_value=MOCK_PROFILE), \
+        google_mod = types.ModuleType("google")
+        cloud_mod = types.ModuleType("google.cloud")
+        bigquery_mod = types.ModuleType("google.cloud.bigquery")
+        generativeai_mod = types.ModuleType("google.generativeai")
+        with patch.dict(
+            sys.modules,
+            {
+                "google": google_mod,
+                "google.cloud": cloud_mod,
+                "google.cloud.bigquery": bigquery_mod,
+                "google.generativeai": generativeai_mod,
+            },
+        ), patch("data_fetcher.get_user_profile", return_value=MOCK_PROFILE), \
              patch("data_fetcher.get_user_posts", return_value=MOCK_POSTS), \
              patch("data_fetcher.get_user_workouts", return_value=MOCK_WORKOUTS), \
              patch("data_fetcher.get_genai_advice", return_value=MOCK_ADVICE), \
