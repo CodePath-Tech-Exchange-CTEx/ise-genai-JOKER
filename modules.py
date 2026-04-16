@@ -33,7 +33,7 @@ def display_my_custom_component(value):
     # create_component(data, html_file_name) # This function is in internals.py
 
 
-def display_post(username, user_image, timestamp, content, post_image):
+def display_post(username, user_image, timestamp, content, post_image, commenter_username="You"):
     """Displays a post with user information, content, and engagement stats.
 
     Args:
@@ -42,6 +42,7 @@ def display_post(username, user_image, timestamp, content, post_image):
         timestamp: The time the post was made.
         content: The text content of the post.
         post_image: The URL for the main image of the post.
+        commenter_username: The username shown when posting comments.
     """
     likes = random.randint(0, 1000)
 
@@ -152,7 +153,7 @@ def display_post(username, user_image, timestamp, content, post_image):
     def _post_comment():
       new_comment = st.session_state.get(new_comment_key, "").strip()
       if new_comment:
-        st.session_state[comments_key].append(new_comment)
+        st.session_state[comments_key].append({"username": commenter_username, "text": new_comment})
       st.session_state[clear_flag_key] = True
 
     def _cancel_comment():
@@ -214,7 +215,12 @@ def display_post(username, user_image, timestamp, content, post_image):
       st.caption("Previous comments")
       if st.session_state[comments_key]:
         for old_comment in st.session_state[comments_key]:
-          st.markdown(f"- {old_comment}")
+          if isinstance(old_comment, dict):
+            old_comment_username = old_comment.get("username", "User")
+            old_comment_text = old_comment.get("text", "")
+            st.markdown(f"- {old_comment_username}: {old_comment_text}")
+          else:
+            st.markdown(f"- User: {old_comment}")
       else:
         st.caption("No comments yet.")
 

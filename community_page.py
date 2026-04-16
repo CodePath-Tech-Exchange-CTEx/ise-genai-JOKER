@@ -47,6 +47,7 @@ def _get_friend_posts(user_id):
 def display_community_page(user_id):
     """Display community home page: friend posts and one AI encouragement."""
     st.header('Community')
+    current_user_profile = get_user_profile(user_id)
 
     advice = get_genai_advice(user_id)
     st.subheader('AI Advice and Encouragement')
@@ -66,6 +67,7 @@ def display_community_page(user_id):
             timestamp=post['timestamp'],
             content=post['content'],
             post_image=post['post_image'],
+            commenter_username=current_user_profile.get('username', user_id),
         )
 
 
