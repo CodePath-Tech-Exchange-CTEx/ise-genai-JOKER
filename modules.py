@@ -44,7 +44,6 @@ def display_post(username, user_image, timestamp, content, post_image):
         post_image: The URL for the main image of the post.
     """
     likes = random.randint(0, 1000)
-    comments = random.randint(0, 500)
 
     post_html = f"""
     <style>
@@ -92,19 +91,20 @@ def display_post(username, user_image, timestamp, content, post_image):
         gap: 20px;
         color: #657786;
       }}
-      .footer-button {{
+      .footer-pill {{
         display: flex;
         align-items: center;
         gap: 5px;
-        background: none;
-        border: none;
+        background: #fff;
+        border: 1px solid #ccd6dd;
+        border-radius: 8px;
         color: #657786;
-        cursor: pointer;
         font-size: 1em;
-        padding: 5px;
+        padding: 6px 10px;
       }}
-      .footer-button:hover {{
-        color: #1da1f2; /* A nice blue for hover effect */
+      .footer-actions {{
+        display: flex;
+        gap: 8px;
       }}
     </style>
 
@@ -121,14 +121,102 @@ def display_post(username, user_image, timestamp, content, post_image):
         <img src="{post_image}" alt="Post image" class="post-image">
       </div>
       <div class="post-footer">
-        <div>
-          <button class="footer-button"><span>&#10084;&#65039;</span> {likes} Likes</button>
-          <button class="footer-button"><span>&#128172;</span> {comments} Comments</button>
+        <div class="footer-actions">
+          <span class="footer-pill"><span>&#10084;&#65039;</span> {likes} Likes</span>
         </div>
       </div>
     </div>
     """
     st.markdown(post_html, unsafe_allow_html=True)
+
+    # Simple, stable per-post comment section rendered below the card.
+    post_id = f"{username}|{timestamp}|{content}"
+    comments_key = f"comments_{post_id}"
+    new_comment_key = f"new_comment_{post_id}"
+    clear_flag_key = f"clear_new_comment_{post_id}"
+    show_comments_key = f"show_comments_{post_id}"
+
+    if comments_key not in st.session_state:
+      st.session_state[comments_key] = []
+    if new_comment_key not in st.session_state:
+      st.session_state[new_comment_key] = ""
+    if clear_flag_key not in st.session_state:
+      st.session_state[clear_flag_key] = False
+    if show_comments_key not in st.session_state:
+      st.session_state[show_comments_key] = False
+
+    if st.session_state[clear_flag_key]:
+      st.session_state[new_comment_key] = ""
+      st.session_state[clear_flag_key] = False
+
+    def _post_comment():
+      new_comment = st.session_state.get(new_comment_key, "").strip()
+      if new_comment:
+        st.session_state[comments_key].append(new_comment)
+      st.session_state[clear_flag_key] = True
+
+    def _cancel_comment():
+      st.session_state[clear_flag_key] = True
+      st.session_state[show_comments_key] = False
+
+    def _toggle_comments():
+      st.session_state[show_comments_key] = not st.session_state[show_comments_key]
+
+    st.markdown(
+      """
+      <style>
+        div[data-testid="stButton"] > button {
+          border: 1px solid #ccd6dd;
+          border-radius: 8px;
+        }
+      </style>
+      """,
+      unsafe_allow_html=True,
+    )
+
+    controls_col1, controls_col2 = st.columns(2)
+    with controls_col1:
+      st.button(f"❤️ {likes} Likes", key=f"like_{post_id}", use_container_width=True)
+    with controls_col2:
+      st.button(
+        f"💬 {len(st.session_state[comments_key])} Comments",
+        key=f"toggle_comments_{post_id}",
+        use_container_width=True,
+        on_click=_toggle_comments,
+      )
+
+    if st.session_state[show_comments_key]:
+      st.markdown("**Comments**")
+      st.text_area(
+        "Add a comment",
+        key=new_comment_key,
+        placeholder="Write a comment...",
+        label_visibility="collapsed",
+      )
+
+      action_col1, action_col2 = st.columns(2)
+      with action_col1:
+        st.button(
+          "Post",
+          key=f"post_{post_id}",
+          use_container_width=True,
+          on_click=_post_comment,
+        )
+
+      with action_col2:
+        st.button(
+          "Cancel",
+          key=f"cancel_{post_id}",
+          use_container_width=True,
+          on_click=_cancel_comment,
+        )
+
+      st.caption("Previous comments")
+      if st.session_state[comments_key]:
+        for old_comment in st.session_state[comments_key]:
+          st.markdown(f"- {old_comment}")
+      else:
+        st.caption("No comments yet.")
 
 
 def display_activity_summary(workouts_list):
