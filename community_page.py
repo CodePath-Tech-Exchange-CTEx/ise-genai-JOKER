@@ -1,10 +1,14 @@
 """Community page UI for friend posts and encouragement."""
 
 from datetime import datetime
-
 import streamlit as st
-
-from data_fetcher import get_genai_advice, get_user_posts, get_user_profile
+from data_fetcher import (
+    append_post_comment,
+    get_genai_advice,
+    get_user_posts,
+    get_user_profile,
+    increment_post_likes,
+)
 from modules import display_post
 
 
@@ -32,11 +36,14 @@ def _get_friend_posts(user_id):
         for post in friend_posts:
             posts.append(
                 {
+                    'post_id': post.get('post_id'),
                     'username': friend_profile.get('username', friend_id),
                     'user_image': friend_profile.get('profile_image', ''),
                     'timestamp': post.get('timestamp'),
                     'content': post.get('content', ''),
                     'post_image': post.get('image', ''),
+                    'likes': post.get('likes', 0),
+                    'comments': post.get('comments', []),
                 }
             )
 
@@ -68,6 +75,11 @@ def display_community_page(user_id):
             content=post['content'],
             post_image=post['post_image'],
             commenter_username=current_user_profile.get('username', user_id),
+            post_id=post.get('post_id'),
+            initial_likes=post.get('likes', 0),
+            initial_comments=post.get('comments', []),
+            on_like=increment_post_likes,
+            on_comment=append_post_comment,
         )
 
 

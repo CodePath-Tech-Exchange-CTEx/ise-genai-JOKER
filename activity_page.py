@@ -1,8 +1,13 @@
 """Activity page UI with recent workouts, summary, and share-to-community."""
 
 import streamlit as st
-
-from data_fetcher import create_user_post, get_user_profile, get_user_workouts
+from data_fetcher import (
+    append_post_comment,
+    create_user_post,
+    get_user_profile,
+    get_user_workouts,
+    increment_post_likes,
+)
 from modules import display_post, display_recent_workouts
 
 
@@ -65,7 +70,13 @@ def display_activity_page(user_id):
             content=created_post['content'],
             post_image=created_post.get('image', ''),
             commenter_username=profile.get('username', user_id),
+            post_id=created_post.get('post_id'),
+            initial_likes=created_post.get('likes', 0),
+            initial_comments=created_post.get('comments', []),
+            on_like=increment_post_likes,
+            on_comment=append_post_comment,
         )
+        
 
 
 if __name__ == '__main__':

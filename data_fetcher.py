@@ -171,15 +171,59 @@ def get_user_posts(user_id):
     """
     client = get_bq_client()
     query = f"""
-        SELECT PostId as post_id, AuthorId as user_id, Timestamp as timestamp, 
-               ImageUrl as image, Content as content
+        SELECT PostId as post_id, AuthorId as user_id, Timestamp as timestamp,
+               ImageUrl as image, Content as content,
+               COALESCE(Likes, 0) as likes, IFNULL(Comments, []) as comments
         FROM `robert-hardy-hu.JOKER.Posts`
         WHERE AuthorId = '{user_id}'
         ORDER BY Timestamp DESC
     """
 
     results = client.query(query).result()
-    return [dict(row) for row in results]
+    posts = []
+    for row in results:
+        post = dict(row)
+        if post.get('comments') is None:
+            post['comments'] = []
+        posts.append(post)
+    return posts
+
+
+def increment_post_likes(post_id):
+    """Increments the like counter for a post by 1."""
+    client = get_bq_client()
+    query = """
+        UPDATE `robert-hardy-hu.JOKER.Posts`
+        SET Likes = COALESCE(Likes, 0) + 1
+        WHERE PostId = @post_id
+    """
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter('post_id', 'STRING', post_id),
+        ]
+    )
+    client.query(query, job_config=job_config).result()
+
+
+def append_post_comment(post_id, comment):
+    """Appends a comment string to a post's Comments array."""
+    cleaned_comment = (comment or '').strip()
+    if not cleaned_comment:
+        return
+
+    client = get_bq_client()
+    query = """
+        UPDATE `robert-hardy-hu.JOKER.Posts`
+        SET Comments = ARRAY_CONCAT(IFNULL(Comments, []), [@comment])
+        WHERE PostId = @post_id
+    """
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter('post_id', 'STRING', post_id),
+            bigquery.ScalarQueryParameter('comment', 'STRING', cleaned_comment),
+        ]
+    )
+    client.query(query, job_config=job_config).result()
 
 
 def get_genai_advice(user_id):
@@ -250,8 +294,8 @@ def create_user_post(author_id, content, image_url=''):
 
     created_at = datetime.utcnow().replace(microsecond=0)
     query = """
-        INSERT INTO `robert-hardy-hu.JOKER.Posts` (PostId, AuthorId, Timestamp, ImageUrl, Content)
-        VALUES (@post_id, @author_id, @timestamp, @image_url, @content)
+        INSERT INTO `robert-hardy-hu.JOKER.Posts` (PostId, AuthorId, Timestamp, ImageUrl, Content, Likes, Comments)
+        VALUES (@post_id, @author_id, @timestamp, @image_url, @content, @likes, @comments)
     """
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
@@ -260,6 +304,8 @@ def create_user_post(author_id, content, image_url=''):
             bigquery.ScalarQueryParameter('timestamp', 'DATETIME', created_at),
             bigquery.ScalarQueryParameter('image_url', 'STRING', cleaned_image_url),
             bigquery.ScalarQueryParameter('content', 'STRING', cleaned_content),
+            bigquery.ScalarQueryParameter('likes', 'INT64', 0),
+            bigquery.ArrayQueryParameter('comments', 'STRING', []),
         ]
     )
     client.query(query, job_config=job_config).result()
@@ -270,4 +316,6 @@ def create_user_post(author_id, content, image_url=''):
         'timestamp': created_at.strftime('%Y-%m-%d %H:%M:%S'),
         'content': cleaned_content,
         'image': cleaned_image_url,
+        'likes': 0,
+        'comments': [],
     }

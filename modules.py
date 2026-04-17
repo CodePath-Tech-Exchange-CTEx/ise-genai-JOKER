@@ -33,7 +33,19 @@ def display_my_custom_component(value):
     # create_component(data, html_file_name) # This function is in internals.py
 
 
-def display_post(username, user_image, timestamp, content, post_image, commenter_username="You"):
+def display_post(
+  username,
+  user_image,
+  timestamp,
+  content,
+  post_image,
+  commenter_username="You",
+  post_id=None,
+  initial_likes=0,
+  initial_comments=None,
+  on_like=None,
+  on_comment=None,
+):
     """Displays a post with user information, content, and engagement stats.
 
     Args:
@@ -44,7 +56,7 @@ def display_post(username, user_image, timestamp, content, post_image, commenter
         post_image: The URL for the main image of the post.
         commenter_username: The username shown when posting comments.
     """
-    likes = random.randint(0, 1000)
+    likes = int(initial_likes or 0)
 
     post_html = f"""
     <style>
@@ -135,14 +147,17 @@ def display_post(username, user_image, timestamp, content, post_image, commenter
     st.markdown(post_html, unsafe_allow_html=True)
 
     # Simple, stable per-post comment section rendered below the card.
-    post_id = f"{username}|{timestamp}|{content}"
-    comments_key = f"comments_{post_id}"
-    new_comment_key = f"new_comment_{post_id}"
-    clear_flag_key = f"clear_new_comment_{post_id}"
-    show_comments_key = f"show_comments_{post_id}"
+    post_key = post_id if post_id else f"{username}|{timestamp}|{content}"
+    comments_key = f"comments_{post_key}"
+    likes_key = f"likes_{post_key}"
+    new_comment_key = f"new_comment_{post_key}"
+    clear_flag_key = f"clear_new_comment_{post_key}"
+    show_comments_key = f"show_comments_{post_key}"
 
     if comments_key not in st.session_state:
-      st.session_state[comments_key] = []
+      st.session_state[comments_key] = list(initial_comments or [])
+    if likes_key not in st.session_state:
+      st.session_state[likes_key] = likes
     if new_comment_key not in st.session_state:
       st.session_state[new_comment_key] = ""
     if clear_flag_key not in st.session_state:
@@ -157,8 +172,16 @@ def display_post(username, user_image, timestamp, content, post_image, commenter
     def _post_comment():
       new_comment = st.session_state.get(new_comment_key, "").strip()
       if new_comment:
-        st.session_state[comments_key].append({"username": commenter_username, "text": new_comment})
+        comment_value = f"{commenter_username}: {new_comment}"
+        st.session_state[comments_key].append(comment_value)
+        if on_comment and post_id:
+          on_comment(post_id, comment_value)
       st.session_state[clear_flag_key] = True
+
+    def _like_post():
+      st.session_state[likes_key] = int(st.session_state.get(likes_key, 0)) + 1
+      if on_like and post_id:
+        on_like(post_id)
 
     def _cancel_comment():
       st.session_state[clear_flag_key] = True
@@ -181,11 +204,16 @@ def display_post(username, user_image, timestamp, content, post_image, commenter
 
     controls_col1, controls_col2 = st.columns(2)
     with controls_col1:
-      st.button(f"❤️ {likes} Likes", key=f"like_{post_id}", use_container_width=True)
+      st.button(
+        f"❤️ {st.session_state[likes_key]} Likes",
+        key=f"like_{post_key}",
+        use_container_width=True,
+        on_click=_like_post,
+      )
     with controls_col2:
       st.button(
         f"💬 {len(st.session_state[comments_key])} Comments",
-        key=f"toggle_comments_{post_id}",
+        key=f"toggle_comments_{post_key}",
         use_container_width=True,
         on_click=_toggle_comments,
       )
@@ -203,7 +231,7 @@ def display_post(username, user_image, timestamp, content, post_image, commenter
       with action_col1:
         st.button(
           "Post",
-          key=f"post_{post_id}",
+          key=f"post_{post_key}",
           use_container_width=True,
           on_click=_post_comment,
         )
@@ -211,7 +239,7 @@ def display_post(username, user_image, timestamp, content, post_image, commenter
       with action_col2:
         st.button(
           "Cancel",
-          key=f"cancel_{post_id}",
+          key=f"cancel_{post_key}",
           use_container_width=True,
           on_click=_cancel_comment,
         )
@@ -224,7 +252,7 @@ def display_post(username, user_image, timestamp, content, post_image, commenter
             old_comment_text = old_comment.get("text", "")
             st.markdown(f"- {old_comment_username}: {old_comment_text}")
           else:
-            st.markdown(f"- User: {old_comment}")
+            st.markdown(f"- {old_comment}")
       else:
         st.caption("No comments yet.")
 

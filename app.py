@@ -11,6 +11,7 @@ import random
 import google.generativeai as genai
 from modules import display_my_custom_component, display_post, display_genai_advice, display_activity_summary, display_recent_workouts
 from data_fetcher import (
+    append_post_comment,
     create_user_account,
     create_user_post,
     get_genai_advice,
@@ -19,6 +20,7 @@ from data_fetcher import (
     get_user_profile,
     get_user_sensor_data,
     get_user_workouts,
+    increment_post_likes,
     update_user_profile_details,
 )
 from community_page import display_community_page
@@ -223,7 +225,13 @@ def display_app_page():
                 timestamp=post['timestamp'],
                 content=post['content'],
                 post_image=post['image'],
-                commenter_username=user_profile['username'])
+                commenter_username=user_profile['username'],
+                post_id=post.get('post_id'),
+                initial_likes=post.get('likes', 0),
+                initial_comments=post.get('comments', []),
+                on_like=increment_post_likes,
+                on_comment=append_post_comment,
+            )
 
     elif selection == "Activity Summary":
         st.header('Activity Summary')
