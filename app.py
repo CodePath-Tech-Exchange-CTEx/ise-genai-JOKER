@@ -10,12 +10,67 @@ from datetime import datetime
 import random
 import google.generativeai as genai
 from modules import display_my_custom_component, display_post, display_genai_advice, display_activity_summary, display_recent_workouts
-from data_fetcher import get_user_posts, get_genai_advice, get_user_profile, get_user_sensor_data, get_user_workouts
+from data_fetcher import (
+    create_user_account,
+    get_genai_advice,
+    get_user_by_username,
+    get_user_posts,
+    get_user_profile,
+    get_user_sensor_data,
+    get_user_workouts,
+)
 from community_page import display_community_page
 from activity_page import display_activity_page
 
 GEMINI_API_KEY = "AIzaSyCUwvjVDxFk75RHFbJ9ljnIvYnhilv6xqM"
-userId = 'user1'
+def _clear_user_cached_state():
+    """Clears session keys that are specific to a logged-in user."""
+    for key in ["ai_advice_content", "ai_advice_timestamp", "ai_advice_image"]:
+        st.session_state.pop(key, None)
+
+
+def _display_auth_gate():
+    """Shows login/signup UI and returns True only when authenticated."""
+    st.title("Welcome")
+    st.write("Log in with your username, or create a new account.")
+
+    login_tab, signup_tab = st.tabs(["Log In", "Sign Up"])
+
+    with login_tab:
+        with st.form("login_form"):
+            login_username = st.text_input("Username", key="login_username")
+            login_submitted = st.form_submit_button("Log In")
+
+        if login_submitted:
+            user = get_user_by_username(login_username)
+            if user:
+                st.session_state["user_id"] = user["user_id"]
+                st.session_state["username"] = user["username"]
+                _clear_user_cached_state()
+                st.rerun()
+            else:
+                st.error("Invalid username. Please try again or sign up.")
+
+    with signup_tab:
+        with st.form("signup_form"):
+            signup_name = st.text_input("Name", key="signup_name")
+            signup_username = st.text_input("Username", key="signup_username")
+            signup_submitted = st.form_submit_button("Sign Up")
+
+        if signup_submitted:
+            try:
+                created_user = create_user_account(signup_name, signup_username)
+                st.session_state["user_id"] = created_user["user_id"]
+                st.session_state["username"] = created_user["username"]
+                _clear_user_cached_state()
+                st.success("Account created successfully.")
+                st.rerun()
+            except ValueError as err:
+                st.error(str(err))
+            except Exception:
+                st.error("Could not create the account right now. Please try again.")
+
+    return bool(st.session_state.get("user_id"))
 
 FALLBACK_MOTIVATIONS = [
     "You've been putting in the work and it shows — consistency is your superpower. ",
@@ -42,7 +97,23 @@ FALLBACK_MOTIVATIONS = [
 
 def display_app_page():
     """Displays the home page of the app."""
+    if "user_id" not in st.session_state:
+        st.session_state["user_id"] = None
+    if "username" not in st.session_state:
+        st.session_state["username"] = None
+
+    if not st.session_state.get("user_id"):
+        _display_auth_gate()
+        return
+
+    userId = st.session_state["user_id"]
     st.sidebar.title("Menu")
+    if st.sidebar.button("Log Out"):
+        st.session_state["user_id"] = None
+        st.session_state["username"] = None
+        _clear_user_cached_state()
+        st.rerun()
+
     selection = st.sidebar.radio(
         "Go to",
         ["Home", "Posts", "Activity Summary", "Recent Workouts", "AI Trainer Advice", "Community", "Activity"]
@@ -50,6 +121,12 @@ def display_app_page():
 
     if selection == "Home":
         user_profile = get_user_profile(userId)
+        if not user_profile:
+            st.error("Could not load your profile. Please log in again.")
+            st.session_state["user_id"] = None
+            st.session_state["username"] = None
+            _clear_user_cached_state()
+            return
         st.title(f"Welcome back, {user_profile['username']}! 👋")
         st.divider()
         

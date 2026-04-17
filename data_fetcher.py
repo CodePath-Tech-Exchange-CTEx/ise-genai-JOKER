@@ -7,6 +7,74 @@ GEMINI_API_KEY = "AIzaSyCUwvjVDxFk75RHFbJ9ljnIvYnhilv6xqM"
 def get_bq_client():
     return bigquery.Client()
 
+def get_user_by_username(username):
+    """Returns a user record for a given username, or None if not found."""
+    cleaned_username = (username or "").strip()
+    if not cleaned_username:
+        return None
+
+    client = get_bq_client()
+    query = """
+        SELECT UserId as user_id, Name as full_name, Username as username
+        FROM `robert-hardy-hu.JOKER.Users`
+        WHERE LOWER(Username) = LOWER(@username)
+        LIMIT 1
+    """
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter('username', 'STRING', cleaned_username),
+        ]
+    )
+    rows = list(client.query(query, job_config=job_config).result())
+    return dict(rows[0]) if rows else None
+
+
+def _generate_unique_user_id(client):
+    """Generate a random user id that does not already exist in Users."""
+    existing_query = "SELECT UserId FROM `robert-hardy-hu.JOKER.Users`"
+    existing_ids = {row['UserId'] for row in client.query(existing_query).result()}
+
+    for _ in range(1000):
+        candidate = f"user{random.randint(100000, 999999)}"
+        if candidate not in existing_ids:
+            return candidate
+
+    raise RuntimeError("Unable to generate a unique user id after many attempts.")
+
+
+def create_user_account(name, username):
+    """Creates a new user with name and username and returns the user record."""
+    cleaned_name = (name or "").strip()
+    cleaned_username = (username or "").strip()
+
+    if not cleaned_name or not cleaned_username:
+        raise ValueError("Name and username are required.")
+
+    if get_user_by_username(cleaned_username):
+        raise ValueError("That username is already taken.")
+
+    client = get_bq_client()
+    user_id = _generate_unique_user_id(client)
+
+    insert_query = """
+        INSERT INTO `robert-hardy-hu.JOKER.Users` (UserId, Name, Username)
+        VALUES (@user_id, @name, @username)
+    """
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter('user_id', 'STRING', user_id),
+            bigquery.ScalarQueryParameter('name', 'STRING', cleaned_name),
+            bigquery.ScalarQueryParameter('username', 'STRING', cleaned_username),
+        ]
+    )
+    client.query(insert_query, job_config=job_config).result()
+
+    return {
+        'user_id': user_id,
+        'full_name': cleaned_name,
+        'username': cleaned_username,
+    }
+    
 def get_user_sensor_data(user_id, workout_id):
     """Returns a list of timestampped information for a given workout.
     """
