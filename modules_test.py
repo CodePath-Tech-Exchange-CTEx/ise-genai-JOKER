@@ -253,6 +253,11 @@ class TestFullAppMock(unittest.TestCase):
 
     def _run_with_mocks(self, page=None):
         """Runs app.py with all data_fetcher functions mocked out."""
+        mock_auth_user = {
+            'user_id': 'user999999',
+            'username': MOCK_PROFILE['username'],
+            'full_name': MOCK_PROFILE['full_name'],
+        }
         google_mod = types.ModuleType("google")
         cloud_mod = types.ModuleType("google.cloud")
         bigquery_mod = types.ModuleType("google.cloud.bigquery")
@@ -269,8 +274,14 @@ class TestFullAppMock(unittest.TestCase):
              patch("data_fetcher.get_user_posts", return_value=MOCK_POSTS), \
              patch("data_fetcher.get_user_workouts", return_value=MOCK_WORKOUTS), \
              patch("data_fetcher.get_genai_advice", return_value=MOCK_ADVICE), \
-             patch("data_fetcher.get_user_sensor_data", return_value=MOCK_SENSOR):
+              patch("data_fetcher.get_user_sensor_data", return_value=MOCK_SENSOR), \
+             patch("data_fetcher.get_user_by_username", return_value=mock_auth_user), \
+             patch("data_fetcher.create_user_account", return_value=mock_auth_user):
             at = AppTest.from_file("app.py", default_timeout=30)
+            at.run()
+            # Authenticate through the login form so sidebar pages become available.
+            at.text_input[0].set_value(MOCK_PROFILE['username'])
+            at.button[0].click()
             at.run()
             if page:
                 at.sidebar.radio[0].set_value(page)
