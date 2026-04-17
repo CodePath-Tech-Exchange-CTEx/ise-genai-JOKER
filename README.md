@@ -2,8 +2,8 @@
 
 ## Our Team
 
-Kamsi Onyewuchi
-Robert Hardy
+Kamsi Onyewuchi, 
+Robert Hardy, 
 Juan David Buitrago Martinez
 
 # Setup
