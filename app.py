@@ -11,17 +11,18 @@ import random
 import google.generativeai as genai
 from modules import display_my_custom_component, display_post, display_genai_advice, display_activity_summary, display_recent_workouts
 from data_fetcher import (
+    authenticate_user,
     append_post_comment,
     create_user_account,
     create_user_post,
     get_genai_advice,
-    get_user_by_username,
     get_user_posts,
     get_user_profile,
     get_user_sensor_data,
     get_user_workouts,
     increment_post_likes,
     update_user_profile_details,
+    update_user_password,
 )
 from community_page import display_community_page
 from activity_page import display_activity_page
@@ -43,27 +44,29 @@ def _display_auth_gate():
     with login_tab:
         with st.form("login_form"):
             login_username = st.text_input("Username", key="login_username")
+            login_password = st.text_input("Password", type="password", key="login_password")
             login_submitted = st.form_submit_button("Log In")
 
         if login_submitted:
-            user = get_user_by_username(login_username)
+            user = authenticate_user(login_username, login_password)
             if user:
                 st.session_state["user_id"] = user["user_id"]
                 st.session_state["username"] = user["username"]
                 _clear_user_cached_state()
                 st.rerun()
             else:
-                st.error("Invalid username. Please try again or sign up.")
+                st.error("Invalid username or password. Please try again or sign up.")
 
     with signup_tab:
         with st.form("signup_form"):
             signup_name = st.text_input("Name", key="signup_name")
             signup_username = st.text_input("Username", key="signup_username")
+            signup_password = st.text_input("Password", type="password", key="signup_password")
             signup_submitted = st.form_submit_button("Sign Up")
 
         if signup_submitted:
             try:
-                created_user = create_user_account(signup_name, signup_username)
+                created_user = create_user_account(signup_name, signup_username, signup_password)
                 st.session_state["user_id"] = created_user["user_id"]
                 st.session_state["username"] = created_user["username"]
                 _clear_user_cached_state()
@@ -192,6 +195,26 @@ def display_app_page():
                 st.error(str(err))
             except Exception:
                 st.error('Could not update profile right now. Please try again.')
+                st.subheader('Change Password')
+        with st.form('password_change_form'):
+            new_password = st.text_input('New Password', type='password')
+            confirm_password = st.text_input('Confirm New Password', type='password')
+            update_password_submitted = st.form_submit_button('Update Password')
+
+        if update_password_submitted:
+            if not new_password:
+                st.error('Please enter a new password.')
+            elif new_password != confirm_password:
+                st.error('Passwords do not match.')
+            else:
+                try:
+                    update_user_password(userId, new_password)
+                    st.success('Password updated successfully.')
+                except ValueError as err:
+                    st.error(str(err))
+                except Exception:
+                    st.error('Could not update password right now. Please try again.')
+
                 
     elif selection == "Posts":
         st.header('Posts')
