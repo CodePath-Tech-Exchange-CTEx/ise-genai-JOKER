@@ -1,8 +1,10 @@
-# TODO: Replace with your team name
+# JOKER TEAM
 
 ## Our Team
 
-TODO: Replace with your team members
+Kamsi Onyewuchi
+Robert Hardy
+Juan David Buitrago Martinez
 
 # Setup
 
