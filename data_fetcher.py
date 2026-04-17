@@ -211,6 +211,67 @@ def update_user_password(user_id, new_password):
     )
     client.query(query, job_config=job_config).result()
 
+def get_people_you_may_know(user_id, limit=5):
+    """Returns users that are not the current user and not already friends."""
+    client = get_bq_client()
+    safe_limit = max(1, int(limit))
+    query = f"""
+        SELECT
+            u.UserId as user_id,
+            u.Name as full_name,
+            u.Username as username,
+            u.ImageUrl as profile_image
+        FROM `robert-hardy-hu.JOKER.Users` u
+        WHERE u.UserId != @user_id
+          AND u.UserId NOT IN (
+              SELECT UserId2
+              FROM `robert-hardy-hu.JOKER.Friends`
+              WHERE UserId1 = @user_id
+          )
+        ORDER BY u.Username
+        LIMIT {safe_limit}
+    """
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter('user_id', 'STRING', user_id),
+        ]
+    )
+    return [dict(row) for row in client.query(query, job_config=job_config).result()]
+
+
+def add_friend(user_id, friend_user_id):
+    """Stores a friend relationship UserId1 -> UserId2 if not already present."""
+    cleaned_user_id = (user_id or '').strip()
+    cleaned_friend_user_id = (friend_user_id or '').strip()
+
+    if not cleaned_user_id or not cleaned_friend_user_id:
+        raise ValueError('Both user ids are required.')
+    if cleaned_user_id == cleaned_friend_user_id:
+        raise ValueError('You cannot add yourself as a friend.')
+
+    client = get_bq_client()
+    exists_query = """
+        SELECT 1
+        FROM `robert-hardy-hu.JOKER.Friends`
+        WHERE UserId1 = @user_id AND UserId2 = @friend_user_id
+        LIMIT 1
+    """
+    exists_job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter('user_id', 'STRING', cleaned_user_id),
+            bigquery.ScalarQueryParameter('friend_user_id', 'STRING', cleaned_friend_user_id),
+        ]
+    )
+    already_exists = list(client.query(exists_query, job_config=exists_job_config).result())
+    if already_exists:
+        return
+
+    insert_query = """
+        INSERT INTO `robert-hardy-hu.JOKER.Friends` (UserId1, UserId2)
+        VALUES (@user_id, @friend_user_id)
+    """
+    client.query(insert_query, job_config=exists_job_config).result()
+
 def get_user_posts(user_id):
     """Returns a list of a user's posts.
     """
