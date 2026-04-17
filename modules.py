@@ -81,6 +81,10 @@ def display_post(username, user_image, timestamp, content, post_image, commenter
       .post-content {{
         margin-bottom: 10px;
       }}
+      .post-content p {{
+        color: #14171a;
+        margin: 0;
+      }}
       .post-image {{
         max-width: 100%;
         border-radius: 10px;
