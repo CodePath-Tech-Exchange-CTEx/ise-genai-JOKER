@@ -28,6 +28,29 @@ def get_user_by_username(username):
     rows = list(client.query(query, job_config=job_config).result())
     return dict(rows[0]) if rows else None
 
+def authenticate_user(username, password):
+    """Returns a user record only when username/password are valid."""
+    cleaned_username = (username or "").strip()
+    cleaned_password = (password or "").strip()
+    if not cleaned_username or not cleaned_password:
+        return None
+
+    client = get_bq_client()
+    query = """
+        SELECT UserId as user_id, Name as full_name, Username as username
+        FROM `robert-hardy-hu.JOKER.Users`
+        WHERE LOWER(Username) = LOWER(@username)
+          AND Password = @password
+        LIMIT 1
+    """
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter('username', 'STRING', cleaned_username),
+            bigquery.ScalarQueryParameter('password', 'STRING', cleaned_password),
+        ]
+    )
+    rows = list(client.query(query, job_config=job_config).result())
+    return dict(rows[0]) if rows else None
 
 def _generate_unique_user_id(client):
     """Generate a random user id that does not already exist in Users."""
@@ -42,13 +65,14 @@ def _generate_unique_user_id(client):
     raise RuntimeError("Unable to generate a unique user id after many attempts.")
 
 
-def create_user_account(name, username):
+def create_user_account(name, username, password):
     """Creates a new user with name and username and returns the user record."""
     cleaned_name = (name or "").strip()
     cleaned_username = (username or "").strip()
+    cleaned_password = (password or "").strip()
 
-    if not cleaned_name or not cleaned_username:
-        raise ValueError("Name and username are required.")
+    if not cleaned_name or not cleaned_username or not cleaned_password:
+        raise ValueError("Name, username, and password are required.")
 
     if get_user_by_username(cleaned_username):
         raise ValueError("That username is already taken.")
@@ -57,14 +81,15 @@ def create_user_account(name, username):
     user_id = _generate_unique_user_id(client)
 
     insert_query = """
-        INSERT INTO `robert-hardy-hu.JOKER.Users` (UserId, Name, Username)
-        VALUES (@user_id, @name, @username)
+        INSERT INTO `robert-hardy-hu.JOKER.Users` (UserId, Name, Username, Password)
+        VALUES (@user_id, @name, @username, @password)
     """
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
             bigquery.ScalarQueryParameter('user_id', 'STRING', user_id),
             bigquery.ScalarQueryParameter('name', 'STRING', cleaned_name),
             bigquery.ScalarQueryParameter('username', 'STRING', cleaned_username),
+            bigquery.ScalarQueryParameter('password', 'STRING', cleaned_password),
         ]
     )
     client.query(insert_query, job_config=job_config).result()
@@ -161,6 +186,26 @@ def update_user_profile_details(user_id, image_url, date_of_birth):
         query_parameters=[
             bigquery.ScalarQueryParameter('image_url', 'STRING', cleaned_image_url),
             bigquery.ScalarQueryParameter('date_of_birth', 'DATE', date_of_birth),
+            bigquery.ScalarQueryParameter('user_id', 'STRING', user_id),
+        ]
+    )
+    client.query(query, job_config=job_config).result()
+
+def update_user_password(user_id, new_password):
+    """Updates a user's password."""
+    cleaned_password = (new_password or '').strip()
+    if not cleaned_password:
+        raise ValueError('Password is required.')
+
+    client = get_bq_client()
+    query = """
+        UPDATE `robert-hardy-hu.JOKER.Users`
+        SET Password = @password
+        WHERE UserId = @user_id
+    """
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter('password', 'STRING', cleaned_password),
             bigquery.ScalarQueryParameter('user_id', 'STRING', user_id),
         ]
     )

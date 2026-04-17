@@ -271,16 +271,17 @@ class TestFullAppMock(unittest.TestCase):
                 "google.generativeai": generativeai_mod,
             },
         ), patch("data_fetcher.get_user_profile", return_value=MOCK_PROFILE), \
-             patch("data_fetcher.get_user_posts", return_value=MOCK_POSTS), \
-             patch("data_fetcher.get_user_workouts", return_value=MOCK_WORKOUTS), \
-             patch("data_fetcher.get_genai_advice", return_value=MOCK_ADVICE), \
-              patch("data_fetcher.get_user_sensor_data", return_value=MOCK_SENSOR), \
-             patch("data_fetcher.get_user_by_username", return_value=mock_auth_user), \
-             patch("data_fetcher.create_user_account", return_value=mock_auth_user):
+            patch("data_fetcher.get_user_posts", return_value=MOCK_POSTS), \
+            patch("data_fetcher.get_user_workouts", return_value=MOCK_WORKOUTS), \
+            patch("data_fetcher.get_genai_advice", return_value=MOCK_ADVICE), \
+            patch("data_fetcher.get_user_sensor_data", return_value=MOCK_SENSOR), \
+            patch("data_fetcher.authenticate_user", return_value=mock_auth_user), \
+            patch("data_fetcher.create_user_account", return_value=mock_auth_user):
             at = AppTest.from_file("app.py", default_timeout=30)
             at.run()
             # Authenticate through the login form so sidebar pages become available.
             at.text_input[0].set_value(MOCK_PROFILE['username'])
+            at.text_input[1].set_value("test-password")
             at.button[0].click()
             at.run()
             if page:
