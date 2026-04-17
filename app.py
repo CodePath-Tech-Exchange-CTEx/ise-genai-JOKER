@@ -11,11 +11,13 @@ import random
 import google.generativeai as genai
 from modules import display_my_custom_component, display_post, display_genai_advice, display_activity_summary, display_recent_workouts
 from data_fetcher import (
+    add_friend,
     authenticate_user,
     append_post_comment,
     create_user_account,
     create_user_post,
     get_genai_advice,
+    get_people_you_may_know,
     get_user_posts,
     get_user_profile,
     get_user_sensor_data,
@@ -159,7 +161,27 @@ def display_app_page():
 
         st.divider()
         st.subheader("Today's going to be a great day!")
-        st.write("👈 Use the menu to dive deeper into your stats or community posts.")
+        st.divider()
+        st.subheader("People You Might Know")
+        suggestions = get_people_you_may_know(userId, limit=5)
+
+        if not suggestions:
+            st.caption("No suggestions right now.")
+        else:
+            for person in suggestions:
+                left_col, right_col = st.columns([4, 1])
+                with left_col:
+                    st.markdown(f"**{person.get('full_name', 'Unknown')}** (@{person.get('username', '')})")
+                with right_col:
+                    if st.button("Add Friend", key=f"add_friend_{person.get('user_id')}"):
+                        try:
+                            add_friend(userId, person.get('user_id'))
+                            st.success(f"Added @{person.get('username', '')} to your friends list.")
+                            st.rerun()
+                        except ValueError as err:
+                            st.error(str(err))
+                        except Exception as err:
+                            st.error(f"Could not add friend right now: {err}")
 
     elif selection == "Profile":
         st.header('Profile')
