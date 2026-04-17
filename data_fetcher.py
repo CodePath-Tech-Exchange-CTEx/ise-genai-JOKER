@@ -144,6 +144,27 @@ def get_user_profile(user_id):
     
     return profile
 
+def update_user_profile_details(user_id, image_url, date_of_birth):
+    """Updates a user's profile image URL and date of birth."""
+    cleaned_image_url = (image_url or '').strip()
+    if not date_of_birth:
+        raise ValueError('Date of birth is required.')
+
+    client = get_bq_client()
+    query = """
+        UPDATE `robert-hardy-hu.JOKER.Users`
+        SET ImageUrl = @image_url,
+            DateOfBirth = @date_of_birth
+        WHERE UserId = @user_id
+    """
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter('image_url', 'STRING', cleaned_image_url),
+            bigquery.ScalarQueryParameter('date_of_birth', 'DATE', date_of_birth),
+            bigquery.ScalarQueryParameter('user_id', 'STRING', user_id),
+        ]
+    )
+    client.query(query, job_config=job_config).result()
 
 def get_user_posts(user_id):
     """Returns a list of a user's posts.
@@ -208,10 +229,26 @@ def get_genai_advice(user_id):
 
 def create_user_post(author_id, content, image_url=''):
     """Inserts a new post row into Posts and returns the inserted post data."""
-    post_id = f"post-{author_id}-{int(datetime.utcnow().timestamp())}"
-    created_at = datetime.utcnow()
+    cleaned_content = (content or '').strip()
+    cleaned_image_url = (image_url or '').strip()
+    if not cleaned_content:
+        raise ValueError('Post content is required.')
 
     client = get_bq_client()
+    existing_query = "SELECT PostId FROM `robert-hardy-hu.JOKER.Posts`"
+    existing_ids = {row['PostId'] for row in client.query(existing_query).result()}
+
+    post_id = None
+    for _ in range(1000):
+        candidate = f"post{random.randint(100000, 999999)}"
+        if candidate not in existing_ids:
+            post_id = candidate
+            break
+
+    if not post_id:
+        raise RuntimeError('Unable to generate a unique post id.')
+
+    created_at = datetime.utcnow().replace(microsecond=0)
     query = """
         INSERT INTO `robert-hardy-hu.JOKER.Posts` (PostId, AuthorId, Timestamp, ImageUrl, Content)
         VALUES (@post_id, @author_id, @timestamp, @image_url, @content)
@@ -221,8 +258,8 @@ def create_user_post(author_id, content, image_url=''):
             bigquery.ScalarQueryParameter('post_id', 'STRING', post_id),
             bigquery.ScalarQueryParameter('author_id', 'STRING', author_id),
             bigquery.ScalarQueryParameter('timestamp', 'DATETIME', created_at),
-            bigquery.ScalarQueryParameter('image_url', 'STRING', image_url),
-            bigquery.ScalarQueryParameter('content', 'STRING', content),
+            bigquery.ScalarQueryParameter('image_url', 'STRING', cleaned_image_url),
+            bigquery.ScalarQueryParameter('content', 'STRING', cleaned_content),
         ]
     )
     client.query(query, job_config=job_config).result()
@@ -230,7 +267,7 @@ def create_user_post(author_id, content, image_url=''):
     return {
         'user_id': author_id,
         'post_id': post_id,
-        'timestamp': created_at.strftime('%Y-%m-%d %H:%M:%S UTC'),
-        'content': content,
-        'image': image_url,
+        'timestamp': created_at.strftime('%Y-%m-%d %H:%M:%S'),
+        'content': cleaned_content,
+        'image': cleaned_image_url,
     }

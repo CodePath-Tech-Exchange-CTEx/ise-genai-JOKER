@@ -6,18 +6,20 @@
 #############################################################################
 
 import streamlit as st
-from datetime import datetime
+from datetime import datetime, date
 import random
 import google.generativeai as genai
 from modules import display_my_custom_component, display_post, display_genai_advice, display_activity_summary, display_recent_workouts
 from data_fetcher import (
     create_user_account,
+    create_user_post,
     get_genai_advice,
     get_user_by_username,
     get_user_posts,
     get_user_profile,
     get_user_sensor_data,
     get_user_workouts,
+    update_user_profile_details,
 )
 from community_page import display_community_page
 from activity_page import display_activity_page
@@ -116,7 +118,7 @@ def display_app_page():
 
     selection = st.sidebar.radio(
         "Go to",
-        ["Home", "Posts", "Activity Summary", "Recent Workouts", "AI Trainer Advice", "Community", "Activity"]
+        ["Home", "Profile", "Posts", "Activity Summary", "Recent Workouts", "AI Trainer Advice", "Community", "Activity"]
     )
 
     if selection == "Home":
@@ -154,10 +156,66 @@ def display_app_page():
         st.subheader("Today's going to be a great day!")
         st.write("👈 Use the menu to dive deeper into your stats or community posts.")
 
+    elif selection == "Profile":
+        st.header('Profile')
+        user_profile = get_user_profile(userId)
+        if not user_profile:
+            st.error('Could not load your profile.')
+            return
+
+        image_url_default = user_profile.get('profile_image') or ''
+        raw_dob = user_profile.get('date_of_birth')
+
+        if isinstance(raw_dob, datetime):
+            dob_default = raw_dob.date()
+        elif isinstance(raw_dob, date):
+            dob_default = raw_dob
+        else:
+            try:
+                dob_default = datetime.fromisoformat(str(raw_dob)).date() if raw_dob else date(2000, 1, 1)
+            except (TypeError, ValueError):
+                dob_default = date(2000, 1, 1)
+
+        with st.form('profile_edit_form'):
+            updated_image_url = st.text_input('Profile Image URL', value=image_url_default)
+            updated_dob = st.date_input('Date of Birth', value=dob_default)
+            update_profile_submitted = st.form_submit_button('Save Profile Changes')
+
+        if update_profile_submitted:
+            try:
+                update_user_profile_details(userId, updated_image_url, updated_dob)
+                st.success('Profile updated successfully.')
+                st.rerun()
+            except ValueError as err:
+                st.error(str(err))
+            except Exception:
+                st.error('Could not update profile right now. Please try again.')
+                
     elif selection == "Posts":
         st.header('Posts')
         user_profile = get_user_profile(userId)
+
+        with st.expander("Create Post", expanded=False):
+            with st.form("create_post_form"):
+                post_content = st.text_area("Post text", placeholder="What do you want to share?")
+                post_image_url = st.text_input("Image URL (optional)")
+                create_post_submitted = st.form_submit_button("Create Post")
+
+            if create_post_submitted:
+                try:
+                    create_user_post(userId, post_content, post_image_url)
+                    st.success("Post created successfully.")
+                    st.rerun()
+                except ValueError as err:
+                    st.error(str(err))
+                except Exception:
+                    st.error("Could not create the post right now. Please try again.")
+
+        st.subheader("Your Posts")
+
         posts = get_user_posts(userId)
+        if not posts:
+            st.info('No posts yet. Create your first post above.')
         for post in posts:
             display_post(
                 username=user_profile['username'],
