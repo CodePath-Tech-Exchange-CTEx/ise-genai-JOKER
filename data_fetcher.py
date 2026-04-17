@@ -1,11 +1,45 @@
 from google.cloud import bigquery
 import random
 from datetime import datetime
+import uuid
 import google.generativeai as genai
+import streamlit as st
 
 GEMINI_API_KEY = "AIzaSyCUwvjVDxFk75RHFbJ9ljnIvYnhilv6xqM"
 def get_bq_client():
     return bigquery.Client()
+
+def _clear_cached_reads():
+    """Clears cached read results after writes."""
+    st.cache_data.clear()
+
+
+def _id_exists(client, table, column, value):
+    """Returns True when an id already exists in a table."""
+    query = f"""
+        SELECT 1
+        FROM `{table}`
+        WHERE {column} = @value
+        LIMIT 1
+    """
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter('value', 'STRING', value),
+        ]
+    )
+    return bool(list(client.query(query, job_config=job_config).result()))
+
+
+def _generate_unique_id(client, table, column, prefix):
+    """Generates a unique id using UUID and verifies it does not exist."""
+    for _ in range(20):
+        candidate = f"{prefix}{uuid.uuid4().hex[:10]}"
+        if not _id_exists(client, table, column, candidate):
+            return candidate
+    raise RuntimeError(f"Unable to generate a unique {prefix} id.")
+
+
+@st.cache_data(ttl=60)
 
 def get_user_by_username(username):
     """Returns a user record for a given username, or None if not found."""
@@ -53,16 +87,8 @@ def authenticate_user(username, password):
     return dict(rows[0]) if rows else None
 
 def _generate_unique_user_id(client):
-    """Generate a random user id that does not already exist in Users."""
-    existing_query = "SELECT UserId FROM `robert-hardy-hu.JOKER.Users`"
-    existing_ids = {row['UserId'] for row in client.query(existing_query).result()}
-
-    for _ in range(1000):
-        candidate = f"user{random.randint(100000, 999999)}"
-        if candidate not in existing_ids:
-            return candidate
-
-    raise RuntimeError("Unable to generate a unique user id after many attempts.")
+    """Generate a unique user id without scanning the full Users table."""
+    return _generate_unique_id(client, 'robert-hardy-hu.JOKER.Users', 'UserId', 'user')
 
 
 def create_user_account(name, username, password):
@@ -93,12 +119,14 @@ def create_user_account(name, username, password):
         ]
     )
     client.query(insert_query, job_config=job_config).result()
+    _clear_cached_reads()
 
     return {
         'user_id': user_id,
         'full_name': cleaned_name,
         'username': cleaned_username,
     }
+@st.cache_data(ttl=60)
     
 def get_user_sensor_data(user_id, workout_id):
     """Returns a list of timestampped information for a given workout.
@@ -116,7 +144,7 @@ def get_user_sensor_data(user_id, workout_id):
     results = client.query(query).result()
     return [dict(row) for row in results]
 
-
+@st.cache_data(ttl=60)
 def get_user_workouts(user_id):
     """Returns a list of user's workouts.
     """
@@ -142,7 +170,7 @@ def get_user_workouts(user_id):
         workouts.append(w)
     return workouts
 
-
+@st.cache_data(ttl=60)
 def get_user_profile(user_id):
     """Returns information about the given user.
     """
@@ -190,6 +218,7 @@ def update_user_profile_details(user_id, image_url, date_of_birth):
         ]
     )
     client.query(query, job_config=job_config).result()
+    _clear_cached_reads()
 
 def update_user_password(user_id, new_password):
     """Updates a user's password."""
@@ -210,7 +239,9 @@ def update_user_password(user_id, new_password):
         ]
     )
     client.query(query, job_config=job_config).result()
+    _clear_cached_reads()
 
+@st.cache_data(ttl=60)  
 def get_people_you_may_know(user_id, limit=5):
     """Returns users that are not the current user and not already friends."""
     client = get_bq_client()
@@ -271,7 +302,38 @@ def add_friend(user_id, friend_user_id):
         VALUES (@user_id, @friend_user_id)
     """
     client.query(insert_query, job_config=exists_job_config).result()
+    _clear_cached_reads()
 
+@st.cache_data(ttl=60)
+def get_friend_feed(user_id, limit=10):
+    """Returns recent posts from friends using one query."""
+    safe_limit = max(1, int(limit))
+    client = get_bq_client()
+    query = f"""
+        SELECT
+            p.PostId as post_id,
+            p.Timestamp as timestamp,
+            p.Content as content,
+            p.ImageUrl as post_image,
+            COALESCE(p.Likes, 0) as likes,
+            IFNULL(p.Comments, []) as comments,
+            u.Username as username,
+            u.ImageUrl as user_image
+        FROM `robert-hardy-hu.JOKER.Friends` f
+        JOIN `robert-hardy-hu.JOKER.Posts` p ON p.AuthorId = f.UserId2
+        JOIN `robert-hardy-hu.JOKER.Users` u ON u.UserId = f.UserId2
+        WHERE f.UserId1 = @user_id
+        ORDER BY p.Timestamp DESC
+        LIMIT {safe_limit}
+    """
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter('user_id', 'STRING', user_id),
+        ]
+    )
+    return [dict(row) for row in client.query(query, job_config=job_config).result()]
+
+@st.cache_data(ttl=60)
 def get_user_posts(user_id):
     """Returns a list of a user's posts.
     """
@@ -309,7 +371,7 @@ def increment_post_likes(post_id):
         ]
     )
     client.query(query, job_config=job_config).result()
-
+    _clear_cached_reads()
 
 def append_post_comment(post_id, comment):
     """Appends a comment string to a post's Comments array."""
@@ -330,8 +392,9 @@ def append_post_comment(post_id, comment):
         ]
     )
     client.query(query, job_config=job_config).result()
+    _clear_cached_reads()
 
-
+@st.cache_data(ttl=120)
 def get_genai_advice(user_id):
     """
     Fetches personalized fitness advice from Gemini based on user stats.
@@ -385,19 +448,7 @@ def create_user_post(author_id, content, image_url=''):
         raise ValueError('Post content is required.')
 
     client = get_bq_client()
-    existing_query = "SELECT PostId FROM `robert-hardy-hu.JOKER.Posts`"
-    existing_ids = {row['PostId'] for row in client.query(existing_query).result()}
-
-    post_id = None
-    for _ in range(1000):
-        candidate = f"post{random.randint(100000, 999999)}"
-        if candidate not in existing_ids:
-            post_id = candidate
-            break
-
-    if not post_id:
-        raise RuntimeError('Unable to generate a unique post id.')
-
+    post_id = _generate_unique_id(client, 'robert-hardy-hu.JOKER.Posts', 'PostId', 'post')
     created_at = datetime.utcnow().replace(microsecond=0)
     query = """
         INSERT INTO `robert-hardy-hu.JOKER.Posts` (PostId, AuthorId, Timestamp, ImageUrl, Content, Likes, Comments)
@@ -415,6 +466,7 @@ def create_user_post(author_id, content, image_url=''):
         ]
     )
     client.query(query, job_config=job_config).result()
+    _clear_cached_reads()
 
     return {
         'user_id': author_id,
