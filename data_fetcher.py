@@ -144,10 +144,16 @@ def get_user_sensor_data(user_id, workout_id):
     results = client.query(query).result()
     return [dict(row) for row in results]
 
-@st.cache_data(ttl=60)
 def get_user_workouts(user_id):
     """Returns a list of user's workouts.
     """
+    cache_token = str(id(get_bq_client))
+    return _get_user_workouts_cached(user_id, cache_token)
+
+
+@st.cache_data(ttl=60)
+def _get_user_workouts_cached(user_id, cache_token):
+    """Cached workout lookup keyed by the active client identity."""
     client = get_bq_client()
     query = f"""
         SELECT WorkoutId as workout_id, StartTimestamp as start_timestamp, 
