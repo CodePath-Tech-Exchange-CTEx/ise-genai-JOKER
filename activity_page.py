@@ -26,12 +26,12 @@ def _build_share_content(workouts):
 
     latest = workouts[0]
     steps = int(latest.get('steps') or 0)
-    return f'Look at this, I walked {steps} steps today!'
+    return f'Look at this, I walked {steps:,} steps today! 🔥'
 
 
 def display_activity_page(user_id):
     """Display a user's activity page and allow sharing a stat as a post."""
-    st.header('My Activity')
+    st.markdown("<h1 style='font-size: 3.5em; line-height: 1; margin-bottom: 20px;'>My Activity</h1>", unsafe_allow_html=True)
 
     profile = get_user_profile(user_id)
     workouts = get_user_workouts(user_id)
@@ -40,25 +40,38 @@ def display_activity_page(user_id):
         st.info('No workouts found yet. Log a workout to see your activity here.')
         return
 
-    st.subheader('Activity Summary')
     total_workouts, total_steps, total_calories = _build_activity_summary(workouts)
 
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric('Total Workouts', total_workouts)
-    with col2:
-        st.metric('Total Steps', total_steps)
-    with col3:
-        st.metric('Total Calories', total_calories)
+    # Custom HTML for the summary metrics
+    summary_html = f"""
+    <div style="display: flex; gap: 20px; margin-bottom: 40px;">
+        <div style="flex: 1; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 20px; text-align: center;">
+            <div style="font-family: 'DM Sans', sans-serif; font-size: 0.75em; color: #fa114f; text-transform: uppercase; letter-spacing: 0.1em; font-weight: bold; margin-bottom: 5px;">Total Workouts</div>
+            <div style="font-family: 'Bebas Neue', sans-serif; font-size: 2.5em; color: #ffffff; line-height: 1;">{total_workouts}</div>
+        </div>
+        <div style="flex: 1; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 20px; text-align: center;">
+            <div style="font-family: 'DM Sans', sans-serif; font-size: 0.75em; color: #fa114f; text-transform: uppercase; letter-spacing: 0.1em; font-weight: bold; margin-bottom: 5px;">Total Steps</div>
+            <div style="font-family: 'Bebas Neue', sans-serif; font-size: 2.5em; color: #ffffff; line-height: 1;">{total_steps:,}</div>
+        </div>
+        <div style="flex: 1; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 20px; text-align: center;">
+            <div style="font-family: 'DM Sans', sans-serif; font-size: 0.75em; color: #fa114f; text-transform: uppercase; letter-spacing: 0.1em; font-weight: bold; margin-bottom: 5px;">Calories Burned</div>
+            <div style="font-family: 'Bebas Neue', sans-serif; font-size: 2.5em; color: #ffffff; line-height: 1;">{total_calories:,}</div>
+        </div>
+    </div>
+    """
+    st.markdown(summary_html, unsafe_allow_html=True)
 
-    st.subheader('Recent 3 Workouts')
+    # Delegate to the newly updated module
     display_recent_workouts(workouts[:3])
 
+    st.markdown("<br>", unsafe_allow_html=True)
     st.divider()
-    st.subheader('Share With Community')
-    st.caption('Share one simple stat as a post from your account.')
+    
+    st.markdown("<h2 style='font-size: 2.2em; margin-bottom: 0;'>Share With Community</h2>", unsafe_allow_html=True)
+    st.caption('Share a quick stat from your latest workout to your feed.')
+    st.markdown("<br>", unsafe_allow_html=True)
 
-    if st.button('Share My Steps', type='primary'):
+    if st.button('Share My Latest Stats', type='primary', use_container_width=True):
         post_content = _build_share_content(workouts)
         created_post = create_user_post(user_id, post_content)
         st.success('Your post was shared to the community.')
@@ -76,8 +89,6 @@ def display_activity_page(user_id):
             on_like=increment_post_likes,
             on_comment=append_post_comment,
         )
-        
-
 
 if __name__ == '__main__':
     display_activity_page('user1')

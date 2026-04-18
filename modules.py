@@ -10,6 +10,7 @@
 import random
 import streamlit as st
 import streamlit.components.v1 as components
+from datetime import datetime
 from internals import create_component
 
 
@@ -33,121 +34,26 @@ def display_my_custom_component(value):
     # create_component(data, html_file_name) # This function is in internals.py
 
 
+import streamlit as st
+from datetime import datetime
+
 def display_post(
-  username,
-  user_image,
-  timestamp,
-  content,
-  post_image,
-  commenter_username="You",
-  post_id=None,
-  initial_likes=0,
-  initial_comments=None,
-  on_like=None,
-  on_comment=None,
+    username,
+    user_image,
+    timestamp,
+    content,
+    post_image,
+    commenter_username="You",
+    post_id=None,
+    initial_likes=0,
+    initial_comments=None,
+    on_like=None,
+    on_comment=None,
 ):
-    """Displays a post with user information, content, and engagement stats.
-
-    Args:
-        username: The username of the post's author.
-        user_image: The URL for the user's profile image.
-        timestamp: The time the post was made.
-        content: The text content of the post.
-        post_image: The URL for the main image of the post.
-        commenter_username: The username shown when posting comments.
-    """
-    likes = int(initial_likes or 0)
-
-    post_html = f"""
-    <style>
-      .post {{
-        border: 1px solid #e1e8ed;
-        border-radius: 10px;
-        padding: 15px;
-        margin-bottom: 20px;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        max-width: 600px;
-        margin-left: auto;
-        margin-right: auto;
-        background-color: #fff;
-      }}
-      .post-header {{
-        display: flex;
-        align-items: center;
-        margin-bottom: 10px;
-      }}
-      .profile-pic {{
-        width: 50px;
-        height: 50px;
-        border-radius: 50%;
-        margin-right: 10px;
-      }}
-      .username {{
-        font-weight: bold;
-      }}
-      .timestamp {{
-        color: #657786;
-        font-size: 0.9em;
-        margin-left: auto;
-      }}
-      .post-content {{
-        margin-bottom: 10px;
-      }}
-      .post-content p {{
-        color: #14171a;
-        margin: 0;
-      }}
-      .post-image {{
-        max-width: 100%;
-        border-radius: 10px;
-        margin-top: 10px;
-      }}
-      .post-footer {{
-        display: flex;
-        align-items: center;
-        gap: 20px;
-        color: #657786;
-      }}
-      .footer-pill {{
-        display: flex;
-        align-items: center;
-        gap: 5px;
-        background: #fff;
-        border: 1px solid #ccd6dd;
-        border-radius: 8px;
-        color: #657786;
-        font-size: 1em;
-        padding: 6px 10px;
-      }}
-      .footer-actions {{
-        display: flex;
-        gap: 8px;
-      }}
-    </style>
-
-    <div class="post">
-      <div class="post-header">
-        <img src="{user_image}" alt="User profile image" class="profile-pic">
-        <div>
-          <div class="username">{username}</div>
-          <div class="timestamp">{timestamp}</div>
-        </div>
-      </div>
-      <div class="post-content">
-        <p>{content}</p>
-        <img src="{post_image}" alt="Post image" class="post-image">
-      </div>
-      <div class="post-footer">
-        <div class="footer-actions">
-          <span class="footer-pill"><span>&#10084;&#65039;</span> {likes} Likes</span>
-        </div>
-      </div>
-    </div>
-    """
-    st.markdown(post_html, unsafe_allow_html=True)
-
-    # Simple, stable per-post comment section rendered below the card.
-    post_key = post_id if post_id else f"{username}|{timestamp}|{content}"
+    """Displays a post with user information, content, and engagement stats."""
+    
+    # 1. Establish session state keys FIRST so we can use current values in the HTML
+    post_key = post_id if post_id else f"{username}|{timestamp}|{content[:10]}"
     comments_key = f"comments_{post_key}"
     likes_key = f"likes_{post_key}"
     new_comment_key = f"new_comment_{post_key}"
@@ -155,106 +61,265 @@ def display_post(
     show_comments_key = f"show_comments_{post_key}"
 
     if comments_key not in st.session_state:
-      st.session_state[comments_key] = list(initial_comments or [])
+        st.session_state[comments_key] = list(initial_comments or [])
     if likes_key not in st.session_state:
-      st.session_state[likes_key] = likes
+        st.session_state[likes_key] = int(initial_likes or 0)
     if new_comment_key not in st.session_state:
-      st.session_state[new_comment_key] = ""
+        st.session_state[new_comment_key] = ""
     if clear_flag_key not in st.session_state:
-      st.session_state[clear_flag_key] = False
+        st.session_state[clear_flag_key] = False
     if show_comments_key not in st.session_state:
-      st.session_state[show_comments_key] = False
+        st.session_state[show_comments_key] = False
 
     if st.session_state[clear_flag_key]:
-      st.session_state[new_comment_key] = ""
-      st.session_state[clear_flag_key] = False
+        st.session_state[new_comment_key] = ""
+        st.session_state[clear_flag_key] = False
 
+    # Grab live counts and format grammar (Like vs Likes)
+    current_likes = st.session_state[likes_key]
+    current_comments = len(st.session_state[comments_key])
+    
+    like_text = "1 Like" if current_likes == 1 else f"{current_likes} Likes"
+    comment_text = "1 Comment" if current_comments == 1 else f"{current_comments} Comments"
+
+    # 2. Clean up the timestamp
+    try:
+        if isinstance(timestamp, str):
+            dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+        else:
+            dt = timestamp
+        formatted_time = dt.strftime("%B %d, %Y  ·  %I:%M %p")
+    except:
+        formatted_time = str(timestamp).split(".")[0] # Fallback if parsing fails
+
+    # 3. Only build the image HTML if an image exists
+    image_html = ""
+    if post_image and str(post_image).strip():
+        image_html = f'<img src="{post_image}" alt="Post image" class="post-image">'
+
+    # 4. Generate the HTML card
+    post_html = f"""
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+    <style>
+      .post {{
+        background: #0d0d0d;
+        border-radius: 16px;
+        padding: 30px 30px 15px 30px;
+        margin-bottom: 15px;
+        font-family: 'DM Sans', sans-serif;
+        max-width: 680px; 
+        margin-left: auto;
+        margin-right: auto;
+        box-shadow: 
+          0 0 0 1px rgba(255,255,255,0.06), 
+          0 24px 60px rgba(0,0,0,0.6);
+      }}
+      .post-header {{
+        display: flex;
+        align-items: center;
+        margin-bottom: 20px;
+      }}
+      .profile-pic {{
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        margin-right: 15px;
+        border: 2px solid rgba(250, 17, 79, 0.3);
+        object-fit: cover;
+      }}
+      .username {{
+        font-family: 'Bebas Neue', sans-serif;
+        font-size: 1.8em;
+        letter-spacing: 0.05em;
+        color: #ffffff;
+        line-height: 1;
+      }}
+      .timestamp {{
+        color: #657786;
+        font-size: 0.8em;
+        letter-spacing: 0.04em;
+        margin-top: 4px;
+      }}
+      .post-content {{
+        margin-bottom: 10px;
+      }}
+      .post-content p {{
+        color: #e1e8ed;
+        font-size: 1.1em;
+        line-height: 1.6;
+        margin: 0;
+      }}
+      .post-image {{
+        max-width: 100%;
+        border-radius: 12px;
+        margin-top: 15px;
+        border: 1px solid rgba(255,255,255,0.06);
+      }}
+      .post-divider {{
+        height: 1px;
+        background-color: rgba(255,255,255,0.07);
+        margin-top: 20px;
+      }}
+    </style>
+
+    <div class="post">
+      <div class="post-header">
+        <img src="{user_image}" alt="User" class="profile-pic" onerror="this.src='https://via.placeholder.com/50/222222/FFFFFF?text=?'">
+        <div>
+          <div class="username">{username}</div>
+          <div class="timestamp">{formatted_time}</div>
+        </div>
+      </div>
+      <div class="post-content">
+        <p>{content}</p>
+        {image_html}
+      </div>
+      <div class="post-divider"></div>
+    </div>
+    """
+    st.markdown(post_html, unsafe_allow_html=True)
+
+    # 5. Callbacks
     def _post_comment():
-      new_comment = st.session_state.get(new_comment_key, "").strip()
-      if new_comment:
-        comment_value = f"{commenter_username}: {new_comment}"
-        st.session_state[comments_key].append(comment_value)
-        if on_comment and post_id:
-          on_comment(post_id, comment_value)
-      st.session_state[clear_flag_key] = True
+        new_comment = st.session_state.get(new_comment_key, "").strip()
+        if new_comment:
+            comment_value = f"{commenter_username}: {new_comment}"
+            st.session_state[comments_key].append(comment_value)
+            if on_comment and post_id:
+                on_comment(post_id, comment_value)
+        st.session_state[clear_flag_key] = True
 
     def _like_post():
-      st.session_state[likes_key] = int(st.session_state.get(likes_key, 0)) + 1
-      if on_like and post_id:
-        on_like(post_id)
+        st.session_state[likes_key] = int(st.session_state.get(likes_key, 0)) + 1
+        if on_like and post_id:
+            on_like(post_id)
 
     def _cancel_comment():
-      st.session_state[clear_flag_key] = True
-      st.session_state[show_comments_key] = False
+        st.session_state[clear_flag_key] = True
+        st.session_state[show_comments_key] = False
 
     def _toggle_comments():
-      st.session_state[show_comments_key] = not st.session_state[show_comments_key]
+        st.session_state[show_comments_key] = not st.session_state[show_comments_key]
 
+    # 6. Streamlit Action Buttons (Now with max-content boundary protection)
     st.markdown(
       """
       <style>
         div[data-testid="stButton"] > button {
-          border: 1px solid #ccd6dd;
-          border-radius: 8px;
+          background-color: rgba(255,255,255,0.03) !important;
+          color: #bcbcbc !important;
+          border: 1px solid rgba(255,255,255,0.05) !important;
+          border-radius: 9999px !important;
+          padding: 6px 20px !important; 
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          transition: all 0.2s ease;
+          width: 100% !important;
+          min-width: max-content !important; /* <--- THIS PREVENTS THE SPILLOVER */
+          box-shadow: none !important; 
+        }
+        
+        /* The Hover State */
+        div[data-testid="stButton"] > button:hover {
+          border-color: #fa114f !important;
+          color: #ffffff !important;
+          background-color: rgba(250, 17, 79, 0.1) !important;
+        }
+
+        /* The Click / Active State */
+        div[data-testid="stButton"] > button:active {
+          transform: scale(0.96) !important; 
+          background-color: rgba(250, 17, 79, 0.2) !important;
+        }
+
+        /* Kill the sticky focus ring */
+        div[data-testid="stButton"] > button:focus {
+          outline: none !important;
+          box-shadow: none !important;
+        }
+
+        /* Force button back to normal state if focused but NOT hovered */
+        div[data-testid="stButton"] > button:focus:not(:hover) {
+          border-color: rgba(255,255,255,0.05) !important;
+          color: #bcbcbc !important;
+          background-color: rgba(255,255,255,0.03) !important;
+        }
+
+        div[data-testid="stButton"] > button > div,
+        div[data-testid="stButton"] p {
+          font-family: 'DM Sans', sans-serif !important;
+          font-size: 0.9em !important;
+          font-weight: 500 !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          line-height: normal !important; 
+          white-space: nowrap !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          gap: 6px !important;
         }
       </style>
       """,
       unsafe_allow_html=True,
     )
 
-    controls_col1, controls_col2 = st.columns(2)
+    # Gave the comments column a slightly wider ratio to accommodate the longer word
+    spacer_left, controls_col1, controls_col2, spacer_right = st.columns([0.5, 1.5, 2.0, 4.0])
+    
     with controls_col1:
-      st.button(
-        f"❤️ {st.session_state[likes_key]} Likes",
-        key=f"like_{post_key}",
-        use_container_width=True,
-        on_click=_like_post,
-      )
+        st.button(
+            f"❤️ {like_text}",
+            key=f"like_btn_{post_key}",
+            use_container_width=True,
+            on_click=_like_post,
+        )
     with controls_col2:
-      st.button(
-        f"💬 {len(st.session_state[comments_key])} Comments",
-        key=f"toggle_comments_{post_key}",
-        use_container_width=True,
-        on_click=_toggle_comments,
-      )
+        st.button(
+            f"💬 {comment_text}",
+            key=f"toggle_btn_{post_key}",
+            use_container_width=True,
+            on_click=_toggle_comments,
+        )
 
+    # 7. Comments Section
     if st.session_state[show_comments_key]:
-      st.markdown("**Comments**")
-      st.text_area(
-        "Add a comment",
-        key=new_comment_key,
-        placeholder="Write a comment...",
-        label_visibility="collapsed",
-      )
-
-      action_col1, action_col2 = st.columns(2)
-      with action_col1:
-        st.button(
-          "Post",
-          key=f"post_{post_key}",
-          use_container_width=True,
-          on_click=_post_comment,
+        st.markdown('<p style="color: #ffffff; font-family: \'DM Sans\', sans-serif; margin-top: 15px;"><strong>Comments</strong></p>', unsafe_allow_html=True)
+        st.text_area(
+            "Add a comment",
+            key=new_comment_key,
+            placeholder="Write a comment...",
+            label_visibility="collapsed",
         )
 
-      with action_col2:
-        st.button(
-          "Cancel",
-          key=f"cancel_{post_key}",
-          use_container_width=True,
-          on_click=_cancel_comment,
-        )
+        action_col1, action_col2 = st.columns(2)
+        with action_col1:
+            st.button(
+                "Post",
+                key=f"post_{post_key}",
+                use_container_width=True,
+                on_click=_post_comment,
+            )
 
-      st.caption("Previous comments")
-      if st.session_state[comments_key]:
-        for old_comment in st.session_state[comments_key]:
-          if isinstance(old_comment, dict):
-            old_comment_username = old_comment.get("username", "User")
-            old_comment_text = old_comment.get("text", "")
-            st.markdown(f"- {old_comment_username}: {old_comment_text}")
-          else:
-            st.markdown(f"- {old_comment}")
-      else:
-        st.caption("No comments yet.")
+        with action_col2:
+            st.button(
+                "Cancel",
+                key=f"cancel_{post_key}",
+                use_container_width=True,
+                on_click=_cancel_comment,
+            )
+
+        st.caption("Previous comments")
+        if st.session_state[comments_key]:
+            for old_comment in st.session_state[comments_key]:
+                if isinstance(old_comment, dict):
+                    old_comment_username = old_comment.get("username", "User")
+                    old_comment_text = old_comment.get("text", "")
+                    st.markdown(f'<span style="color:#bcbcbc">- <strong>{old_comment_username}</strong>: {old_comment_text}</span>', unsafe_allow_html=True)
+                else:
+                    st.markdown(f'<span style="color:#bcbcbc">- {old_comment}</span>', unsafe_allow_html=True)
+        else:
+            st.caption("No comments yet.")
 
 
 def display_activity_summary(workouts_list):
@@ -270,101 +335,129 @@ def display_activity_summary(workouts_list):
     total_calories = sum(w.get('calories_burned', 0) for w in workouts_list)
     calorie_goal = 600
 
-    
     # calculate ring completion (0 to 100)
     percent = min(int((total_calories / calorie_goal) * 100), 100)
     
     # calculate SVG stroke-dasharray (Circumference is 2 * pi * r)
-    # for r=45, circumference is ~283
-    offset = 283 - (283 * percent / 100)
+    # Scaled up: for r=65, circumference is ~408
+    offset = 408 - (408 * percent / 100)
 
-   
     html_content = f"""
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
     <style>
       .activity-card {{
-        border: 1px solid #e1e8ed;
-        border-radius: 10px;
-        padding: 20px;
+        background: #0d0d0d;
+        border-radius: 16px;
+        padding: 50px 60px;
         margin: 20px auto;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto;
-        max-width: 600px;
-        background-color: #fff;
+        font-family: 'DM Sans', sans-serif;
+        max-width: 680px; /* Matched to AI Advice card */
         display: flex;
         align-items: center;
-        gap: 30px;
+        gap: 60px; /* Increased gap for larger card */
+        box-shadow: 
+          0 0 0 1px rgba(255,255,255,0.06), 
+          0 24px 60px rgba(0,0,0,0.6);
+        animation: adviceFadeUp 0.5s cubic-bezier(.22,.68,0,1.2) both;
       }}
       .ring-container {{
         position: relative;
-        width: 120px;
-        height: 120px;
+        width: 160px; /* Scaled up from 120px */
+        height: 160px;
       }}
       .ring-svg {{
         transform: rotate(-90deg);
       }}
       .ring-bg {{
         fill: none;
-        stroke: #f5f8fa;
-        stroke-width: 10;
+        stroke: rgba(255,255,255,0.05);
+        stroke-width: 14; /* Thicker ring */
       }}
       .ring-progress {{
         fill: none;
-        stroke: #fa114f; /* Apple-style Move Red */
-        stroke-width: 10;
+        stroke: url(#activity-gradient);
+        stroke-width: 14; /* Thicker ring */
         stroke-linecap: round;
-        transition: stroke-dashoffset 0.5s ease;
+        transition: stroke-dashoffset 1s cubic-bezier(0.4, 0.0, 0.2, 1);
       }}
       .percent-text {{
         position: absolute;
         top: 50%;
         left: 50%;
-        transform: translate(-50%, -50%);
-        font-weight: bold;
-        font-size: 1.2em;
-        color: #14171a;
+        transform: translate(-50%, -45%);
+        font-family: 'Bebas Neue', sans-serif;
+        font-size: 2.4em; /* Scaled up */
+        color: #ffffff;
+        letter-spacing: 0.05em;
       }}
       .info-container {{
         flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 20px; /* More breathing room between stats */
       }}
       .stat-label {{
-        color: #657786;
-        font-size: 0.85em;
+        color: #fa114f;
+        font-size: 0.8em; /* Scaled up */
+        font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.14em;
       }}
       .stat-value {{
-        font-size: 1.8em;
-        font-weight: 800;
-        color: #14171a;
-        margin: 5px 0;
+        font-family: 'Bebas Neue', sans-serif;
+        font-size: 2.4em; /* Scaled up */
+        color: #ffffff;
+        margin-top: 6px;
+        line-height: 1;
+        letter-spacing: 0.05em;
+      }}
+      .stat-sub {{
+        font-family: 'DM Sans', sans-serif;
+        font-size: 0.4em;
+        color: #484848;
+        letter-spacing: 0.02em;
+      }}
+      
+      /* Mobile responsiveness for the larger card */
+      @media (max-width: 600px) {{
+        .activity-card {{
+          flex-direction: column;
+          padding: 40px 30px;
+          gap: 40px;
+          text-align: center;
+        }}
       }}
     </style>
 
     <div class="activity-card">
       <div class="ring-container">
-        <svg class="ring-svg" width="120" height="120">
-          <circle class="ring-bg" cx="60" cy="60" r="45"></circle>
-          <circle class="ring-progress" cx="60" cy="60" r="45" 
-                  style="stroke-dasharray: 283; stroke-dashoffset: {offset};"></circle>
+        <svg class="ring-svg" width="160" height="160">
+          <defs>
+            <linearGradient id="activity-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#fa114f" />
+              <stop offset="100%" stop-color="#ff6b35" />
+            </linearGradient>
+          </defs>
+          <circle class="ring-bg" cx="80" cy="80" r="65"></circle>
+          <circle class="ring-progress" cx="80" cy="80" r="65" 
+                  style="stroke-dasharray: 408; stroke-dashoffset: {offset};"></circle>
         </svg>
         <div class="percent-text">{percent}%</div>
       </div>
-      
-    <div class="info-container">
-    <div style="margin-bottom: 12px;">
-        <span class="stat-label">Total Workouts</span>
-        <div style="font-size: 1.2em; font-weight: 800; color: #14171a;">{total_workouts}</div>
-    </div>
-
-    <div style="margin-bottom: 12px;">
-        <span class="stat-label">Time Spent</span>
-        <div style="font-size: 1.2em; font-weight: 800; color: #1da1f2;">{time_val}</div>
-    </div>
-
-    <div>
-        <span class="stat-label">Move Goal</span>
-        <div class="stat-value" style="font-size: 1.5em; margin: 0;">{total_calories} <span style="font-size: 0.5em; color: #657786;">/ {calorie_goal} KCAL</span></div>
+      <div class="info-container">
+        <div>
+            <div class="stat-label">Total Workouts</div>
+            <div class="stat-value">{total_workouts}</div>
+        </div>
+        <div>
+            <div class="stat-label">Time Spent</div>
+            <div class="stat-value">{time_val}</div>
+        </div>
+        <div>
+            <div class="stat-label">Move Goal</div>
+            <div class="stat-value">{total_calories} <span class="stat-sub">/ {calorie_goal} KCAL</span></div>
+        </div>
       </div>
-    </div>
     </div>
     """
     
@@ -372,38 +465,139 @@ def display_activity_summary(workouts_list):
 
 
 def display_recent_workouts(workouts_list):
-    """Displays a list of recent workouts with key metrics in a table format.
-    
-    Args:
-        workouts_list: A list of workout dictionaries containing workout details
-                      such as date, exercise type, duration, and calories burned.
-    """
+    """Displays a list of recent workouts as styled HTML cards instead of a raw dataframe."""
     if not workouts_list or len(workouts_list) == 0:
         st.info("No recent workouts found. Start your fitness journey today!")
         return
     
-    st.header("Recent Workouts")
+    st.markdown("""
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+    <style>
+      .recent-header {
+        font-family: 'Bebas Neue', sans-serif;
+        font-size: 2.2em;
+        letter-spacing: 0.06em;
+        color: #ffffff;
+        margin: 0 0 14px 0;
+        line-height: 1.05;
+      }
+      .recent-divider {
+        width: 44px;
+        height: 3px;
+        background: linear-gradient(90deg, #fa114f, #ff6b35);
+        border-radius: 2px;
+        margin-bottom: 20px;
+      }
+      .workout-card {
+        background: rgba(255,255,255,0.02);
+        border: 1px solid rgba(255,255,255,0.06);
+        border-radius: 12px;
+        padding: 20px 25px;
+        margin-bottom: 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: transform 0.2s ease, border-color 0.2s ease;
+      }
+      .workout-card:hover {
+        transform: translateY(-2px);
+        border-color: rgba(250, 17, 79, 0.4);
+        background: rgba(255,255,255,0.04);
+      }
+      .workout-date {
+        font-family: 'Bebas Neue', sans-serif;
+        font-size: 1.6em;
+        color: #ffffff;
+        letter-spacing: 0.05em;
+        line-height: 1;
+      }
+      .workout-time {
+        font-family: 'DM Sans', sans-serif;
+        color: #bcbcbc;
+        font-size: 0.85em;
+        margin-top: 6px;
+      }
+      .workout-stats {
+        display: flex;
+        gap: 30px;
+      }
+      .stat-item {
+        text-align: right;
+      }
+      .stat-val {
+        font-family: 'Bebas Neue', sans-serif;
+        font-size: 1.6em;
+        color: #ffffff;
+        letter-spacing: 0.05em;
+        line-height: 1;
+      }
+      .stat-val span {
+        color: #fa114f;
+      }
+      .stat-lbl {
+        font-family: 'DM Sans', sans-serif;
+        font-size: 0.7em;
+        color: #657786;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        margin-top: 4px;
+        font-weight: bold;
+      }
+    </style>
+    <h2 class="recent-header">Recent Workouts</h2>
+    <div class="recent-divider"></div>
+    """, unsafe_allow_html=True)
     
-    # Display workouts as a dataframe for easy viewing
-    st.dataframe(workouts_list, use_container_width=True)
-    
-    # Display summary stats
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        total_workouts = len(workouts_list)
-        st.metric("Total Workouts", total_workouts)
-    
-    with col2:
-        # Sum duration if available
-        total_duration = sum([w.get('duration', 0) for w in workouts_list])
-        st.metric("Total Duration (min)", total_duration)
-    
-    with col3:
-        # Sum calories if available
-        total_calories = sum([w.get('calories_burned', 0) for w in workouts_list])
-        st.metric("Total Calories", total_calories)
+    for w in workouts_list:
+        # Parse start and end timestamps safely
+        start_str = w.get('start_timestamp', '')
+        end_str = w.get('end_timestamp', '')
+        
+        display_date = "Unknown Date"
+        time_range = ""
+        duration_mins = w.get('duration', 0)
 
+        try:
+            if start_str:
+                start_dt = datetime.fromisoformat(str(start_str).replace('Z', '+00:00'))
+                display_date = start_dt.strftime("%b %d, %Y").upper()
+                time_range = start_dt.strftime("%I:%M %p")
+                
+                # If we don't have a hardcoded duration, try to calculate it
+                if not duration_mins and end_str:
+                    end_dt = datetime.fromisoformat(str(end_str).replace('Z', '+00:00'))
+                    duration_mins = int((end_dt - start_dt).total_seconds() / 60)
+                    time_range += f" - {end_dt.strftime('%I:%M %p')}"
+        except ValueError:
+            display_date = str(start_str).split()[0] if start_str else "Unknown"
+
+        steps = w.get('steps', 0)
+        distance = w.get('distance', 0)
+        calories = w.get('calories_burned', 0)
+
+        # Build the stats dynamically based on what data exists
+        stats_html = ""
+        if duration_mins:
+            stats_html += f'<div class="stat-item"><div class="stat-val"><span>{duration_mins}</span></div><div class="stat-lbl">Mins</div></div>'
+        if distance:
+            stats_html += f'<div class="stat-item"><div class="stat-val"><span>{distance}</span></div><div class="stat-lbl">Distance</div></div>'
+        if steps:
+            stats_html += f'<div class="stat-item"><div class="stat-val"><span>{steps:,}</span></div><div class="stat-lbl">Steps</div></div>'
+        if calories:
+            stats_html += f'<div class="stat-item"><div class="stat-val"><span>{calories}</span></div><div class="stat-lbl">Cals</div></div>'
+
+        card_html = f"""
+        <div class="workout-card">
+            <div>
+                <div class="workout-date">{display_date}</div>
+                <div class="workout-time">&#128336; {time_range}</div>
+            </div>
+            <div class="workout-stats">
+                {stats_html}
+            </div>
+        </div>
+        """
+        st.markdown(card_html, unsafe_allow_html=True)
 
 MOTIVATIONAL_IMAGES = [
     "https://images.unsplash.com/photo-1558611848-73f7eb4001a1",
