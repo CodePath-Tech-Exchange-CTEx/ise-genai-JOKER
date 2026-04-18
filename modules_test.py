@@ -80,9 +80,11 @@ display_post(
         html_output = at.markdown[0].value
         self.assertIn("testuser", html_output)
         self.assertIn("This is a test post.", html_output)
-        self.assertIn("Likes", html_output)
+        
+        # We moved Likes and Comments to the interactive buttons, so we check the buttons instead!
         button_labels = [button.label for button in at.button]
-        self.assertTrue(any("Comments" in label for label in button_labels))
+        self.assertTrue(any("Like" in label for label in button_labels))
+        self.assertTrue(any("Comment" in label for label in button_labels))
 
     def test_post_with_mock_data_fetcher_post(self):
         """Tests display_post using data matching get_user_posts() return format."""
@@ -241,7 +243,14 @@ display_recent_workouts(mock_workouts)
 """)
         at.run()
         self.assertFalse(at.exception)
-        self.assertTrue(len(at.metric) > 0)
+        
+        self.assertTrue(len(at.markdown) > 0)
+        
+        # Combine all markdown elements so we capture the header AND the cards
+        all_html_output = "".join([m.value for m in at.markdown])
+        
+        # Verify our mock data actually made it into the HTML
+        self.assertIn("6,000", all_html_output)
 
 class TestFullAppMock(unittest.TestCase):
     """Full app integration tests with data_fetcher fully mocked.
