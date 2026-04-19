@@ -483,3 +483,84 @@ def create_user_post(author_id, content, image_url=''):
         'likes': 0,
         'comments': [],
     }
+
+def create_user_workout(user_id, total_distance, total_steps, calories_burned, start_timestamp=None, end_timestamp=None):
+    """Inserts a new workout record into the Workouts table and returns the inserted workout data.
+    
+    Args:
+        user_id: The user who performed the workout (STRING).
+        total_distance: Distance covered in the workout (FLOAT).
+        total_steps: Number of steps taken (INTEGER).
+        calories_burned: Calories burned during the workout (FLOAT).
+        start_timestamp: Workout start time (DATETIME, optional, defaults to now).
+        end_timestamp: Workout end time (DATETIME, optional, defaults to start_timestamp + 1 hour).
+    
+    Returns:
+        Dictionary with the created workout data.
+    
+    Raises:
+        ValueError: If required fields are missing or invalid.
+    """
+    # Validate inputs
+    if not user_id or not user_id.strip():
+        raise ValueError('User ID is required.')
+    
+    try:
+        total_distance = float(total_distance)
+        if total_distance < 0:
+            raise ValueError('Distance cannot be negative.')
+    except (ValueError, TypeError):
+        raise ValueError('Distance must be a valid number.')
+    
+    try:
+        total_steps = int(total_steps)
+        if total_steps < 0:
+            raise ValueError('Steps cannot be negative.')
+    except (ValueError, TypeError):
+        raise ValueError('Steps must be a valid integer.')
+    
+    try:
+        calories_burned = float(calories_burned)
+        if calories_burned < 0:
+            raise ValueError('Calories cannot be negative.')
+    except (ValueError, TypeError):
+        raise ValueError('Calories must be a valid number.')
+    
+    # Set default timestamps if not provided
+    if start_timestamp is None:
+        start_timestamp = datetime.utcnow().replace(microsecond=0)
+    if end_timestamp is None:
+        from datetime import timedelta
+        end_timestamp = start_timestamp + timedelta(hours=1)
+    
+    client = get_bq_client()
+    workout_id = _generate_unique_id(client, 'robert-hardy-hu.JOKER.Workouts', 'WorkoutId', 'workout')
+    
+    query = """
+        INSERT INTO `robert-hardy-hu.JOKER.Workouts` 
+        (WorkoutId, UserId, TotalDistance, TotalSteps, CaloriesBurned, StartTimestamp, EndTimestamp)
+        VALUES (@workout_id, @user_id, @total_distance, @total_steps, @calories_burned, @start_timestamp, @end_timestamp)
+    """
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter('workout_id', 'STRING', workout_id),
+            bigquery.ScalarQueryParameter('user_id', 'STRING', user_id.strip()),
+            bigquery.ScalarQueryParameter('total_distance', 'FLOAT64', total_distance),
+            bigquery.ScalarQueryParameter('total_steps', 'INT64', total_steps),
+            bigquery.ScalarQueryParameter('calories_burned', 'FLOAT64', calories_burned),
+            bigquery.ScalarQueryParameter('start_timestamp', 'DATETIME', start_timestamp),
+            bigquery.ScalarQueryParameter('end_timestamp', 'DATETIME', end_timestamp),
+        ]
+    )
+    client.query(query, job_config=job_config).result()
+    _clear_cached_reads()
+    
+    return {
+        'workout_id': workout_id,
+        'user_id': user_id,
+        'total_distance': total_distance,
+        'total_steps': total_steps,
+        'calories_burned': calories_burned,
+        'start_timestamp': start_timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+        'end_timestamp': end_timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+    }

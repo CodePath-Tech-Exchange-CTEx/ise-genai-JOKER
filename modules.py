@@ -802,3 +802,73 @@ def display_genai_advice(timestamp, content, image):
 </html>"""
  
     components.html(html, height=560)
+
+def display_recent_workouts_with_add_form(user_id, workouts_list):
+    """Displays an 'Add Workout' form followed by the recent workouts list.
+    
+    Args:
+        user_id: The current user's ID for creating new workouts.
+        workouts_list: List of workout dictionaries to display.
+    """
+    from data_fetcher import create_user_workout
+    
+    st.markdown("<h2 style='font-size: 2.2em; margin-bottom: 10px;'>Add New Workout</h2>", unsafe_allow_html=True)
+    st.caption('Log a new workout to track your progress.')
+    
+    with st.expander("➕ Add Workout", expanded=False):
+        with st.form("add_workout_form"):
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                distance = st.number_input(
+                    "Distance (miles)",
+                    min_value=0.0,
+                    step=0.1,
+                    format="%.1f",
+                    help="Total distance covered during the workout"
+                )
+                calories = st.number_input(
+                    "Calories Burned",
+                    min_value=0.0,
+                    step=10.0,
+                    format="%.0f",
+                    help="Estimated calories burned"
+                )
+            
+            with col2:
+                steps = st.number_input(
+                    "Total Steps",
+                    min_value=0,
+                    step=100,
+                    help="Number of steps taken"
+                )
+                workout_date = st.date_input(
+                    "Workout Date",
+                    help="Date when the workout occurred"
+                )
+            
+            add_workout_submitted = st.form_submit_button("Log Workout", type="primary", use_container_width=True)
+        
+        if add_workout_submitted:
+            if distance == 0 and steps == 0 and calories == 0:
+                st.error("Please enter at least one workout metric (distance, steps, or calories).")
+            else:
+                try:
+                    from datetime import datetime as dt
+                    start_time = dt.combine(workout_date, dt.min.time())
+                    new_workout = create_user_workout(
+                        user_id=user_id,
+                        total_distance=distance,
+                        total_steps=int(steps),
+                        calories_burned=calories,
+                        start_timestamp=start_time
+                    )
+                    st.success("✅ Workout logged successfully!")
+                    st.rerun()
+                except ValueError as err:
+                    st.error(f"Invalid input: {str(err)}")
+                except Exception as err:
+                    st.error(f"Could not log workout: {str(err)}")
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    display_recent_workouts(workouts_list)
