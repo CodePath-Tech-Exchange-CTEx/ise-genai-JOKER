@@ -9,6 +9,7 @@ from data_fetcher import (
     increment_post_likes,
 )
 from modules import display_post, display_recent_workouts
+from modules import display_activity_summary
 
 
 def _build_activity_summary(workouts):
@@ -36,9 +37,14 @@ def display_activity_page(user_id):
     profile = get_user_profile(user_id)
     workouts = get_user_workouts(user_id)
 
-    if not workouts:
-        st.info('No workouts found yet. Log a workout to see your activity here.')
-        return
+    profile = get_user_profile(user_id) or {}
+    workouts = get_user_workouts(user_id) or []
+
+    st.markdown("<h2 style='font-size: 2.2em; margin-bottom: 0;'>Activity Summary</h2>", unsafe_allow_html=True)
+    st.caption('A complete snapshot of your current progress.')
+    display_activity_summary(workouts)
+
+    st.markdown("<br>", unsafe_allow_html=True)
 
     total_workouts, total_steps, total_calories = _build_activity_summary(workouts)
 
@@ -61,7 +67,8 @@ def display_activity_page(user_id):
     """
     st.markdown(summary_html, unsafe_allow_html=True)
 
-    # Delegate to the newly updated module
+    st.markdown("<h2 style='font-size: 2.2em; margin-bottom: 0;'>Recent Activity</h2>", unsafe_allow_html=True)
+    st.caption('Your latest logged workouts.')
     display_recent_workouts(workouts[:3])
 
     st.markdown("<br>", unsafe_allow_html=True)
