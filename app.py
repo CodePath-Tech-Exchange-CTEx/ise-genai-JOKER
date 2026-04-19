@@ -9,7 +9,7 @@ import streamlit as st
 from datetime import datetime, date
 import random
 import google.generativeai as genai
-from modules import display_my_custom_component, display_post, display_genai_advice, display_activity_summary, display_recent_workouts
+from modules import display_my_custom_component, display_post, display_genai_advice, display_recent_workouts
 from data_fetcher import (
     add_friend,
     authenticate_user,
@@ -298,7 +298,7 @@ def display_app_page():
 
     selection = st.sidebar.radio(
         "Navigation",
-        ["Home", "Profile", "Posts", "Activity Summary", "Recent Workouts", "AI Trainer Advice", "Community", "Activity"],
+        ["Home", "Profile", "Posts", "Recent Workouts", "AI Trainer Advice", "Community", "Activity"],
         label_visibility="collapsed"
     )
 
@@ -474,12 +474,7 @@ def display_app_page():
                 on_like=increment_post_likes,
                 on_comment=append_post_comment,
             )
-
-    elif selection == "Activity Summary":
-        st.markdown("<h1 style='font-size: 3em;'>Activity Summary</h1>", unsafe_allow_html=True)
-        workouts = get_user_workouts(userId)
-        display_activity_summary(workouts)
-    
+ 
     elif selection == "Community":
         display_community_page(userId)
     
