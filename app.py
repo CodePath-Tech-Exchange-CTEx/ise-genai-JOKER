@@ -9,7 +9,7 @@ import streamlit as st
 from datetime import datetime, date
 import random
 import google.generativeai as genai
-from modules import display_my_custom_component, display_post, display_genai_advice, display_recent_workouts
+from modules import display_my_custom_component, display_post, display_genai_advice, display_recent_workouts, display_recent_workouts_with_add_form
 from data_fetcher import (
     add_friend,
     authenticate_user,
@@ -482,8 +482,9 @@ def display_app_page():
         display_activity_page(userId)
 
     elif selection == "Recent Workouts":
+        st.markdown("<h1 style='font-size: 3.5em; line-height: 1; margin-bottom: 20px;'>Recent Workouts</h1>", unsafe_allow_html=True)
         workouts = get_user_workouts(userId)
-        display_recent_workouts(workouts)
+        display_recent_workouts_with_add_form(userId, workouts)
 
     elif selection == "AI Trainer Advice":
         if "ai_advice_content" not in st.session_state:
