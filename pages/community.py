@@ -8,7 +8,7 @@ from data_fetcher import (
     get_user_profile,
     increment_post_likes,
 )
-from modules import display_post
+from pages import display_posts_page
 
 
 # def _parse_timestamp(value):
@@ -56,7 +56,7 @@ def display_community_page(user_id):
     current_user_profile = get_user_profile(user_id)
 
     advice = get_genai_advice(user_id)
-    st.subheader('AI Advice and Encouragement')
+    # st.subheader('AI Advice and Encouragement')
     st.info(advice.get('content', 'Keep going. You are doing great.'))
 
     st.subheader('Latest Posts From Friends')
@@ -67,7 +67,7 @@ def display_community_page(user_id):
         return
 
     for post in friend_posts:
-        display_post(
+        display_posts_page(
             username=post['username'],
             user_image=post['user_image'],
             timestamp=post['timestamp'],

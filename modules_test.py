@@ -4,7 +4,8 @@ import types
 from datetime import datetime
 from unittest.mock import patch
 from streamlit.testing.v1 import AppTest
-from modules import display_post, display_activity_summary, display_genai_advice, display_recent_workouts
+from modules import display_activity_summary
+from pages import display_posts_page, display_genai_advice, display_recent_workouts
 
 
 MOCK_PROFILE = {
@@ -65,8 +66,8 @@ class TestDisplayPost(unittest.TestCase):
     def test_post_rendering(self):
         """Tests that the post renders with the correct information."""
         at = AppTest.from_string("""
-from modules import display_post
-display_post(
+from pages import display_posts_page
+display_posts_page(
     "testuser",
     "http://example.com/user.jpg",
     "2024-01-01 12:00:00",
@@ -90,8 +91,8 @@ display_post(
         """Tests display_post using data matching get_user_posts() return format."""
         post = MOCK_POSTS[0]
         at = AppTest.from_string(f"""
-from modules import display_post
-display_post(
+from pages import display_posts_page
+display_posts_page(
     "remi_the_rems",
     "http://example.com/pic.jpg",
     "{post['timestamp']}",
@@ -180,7 +181,7 @@ class TestDisplayGenAiAdvice(unittest.TestCase):
         """Tests that display_genai_advice renders without errors in AppTest."""
         at = AppTest.from_string("""
 from datetime import datetime
-from modules import display_genai_advice
+from pages import display_genai_advice
 display_genai_advice(
     datetime(2024, 6, 1, 9, 30),
     "You are doing great! Keep up the good work.",
@@ -200,7 +201,7 @@ class TestDisplayRecentWorkouts(unittest.TestCase):
     def test_empty_list_shows_info_message(self):
         """Tests that an empty list shows the no workouts message."""
         at = AppTest.from_string("""
-from modules import display_recent_workouts
+from pages import display_recent_workouts
 display_recent_workouts([])
 """)
         at.run()
@@ -210,7 +211,7 @@ display_recent_workouts([])
     def test_none_shows_info_message(self):
         """Tests that None shows the no workouts message."""
         at = AppTest.from_string("""
-from modules import display_recent_workouts
+from pages import display_recent_workouts
 display_recent_workouts(None)
 """)
         at.run()
@@ -220,7 +221,7 @@ display_recent_workouts(None)
     def test_workouts_render_without_error(self):
         """Tests that workouts in the real data format render without errors."""
         at = AppTest.from_string("""
-from modules import display_recent_workouts
+from pages import display_recent_workouts
 mock_workouts = [
     {
         'workout_id': 'workout0',
@@ -324,6 +325,83 @@ class TestFullAppMock(unittest.TestCase):
         """Tests that the AI Trainer Advice page renders without errors."""
         at = self._run_with_mocks(page="AI Trainer Advice")
         self.assertFalse(at.exception)
+
+class TestIndividualPages(unittest.TestCase):
+    """Tests the individual page functions in the pages directory."""
+
+    def test_profile_page_renders(self):
+        """Tests that the Profile page renders correctly in View Mode."""
+        # Use the context manager to force the patch exactly when the test runs
+        with patch("pages.profile.get_user_profile", return_value=MOCK_PROFILE):
+            at = AppTest.from_string("""
+import streamlit as st
+from pages import display_profile_page
+display_profile_page('user1')
+""")
+            at.run()
+            self.assertFalse(at.exception)
+            
+            html_output = "".join([m.value for m in at.markdown])
+            self.assertIn("Profile", html_output)
+            self.assertIn(MOCK_PROFILE['full_name'], html_output)
+            self.assertIn(MOCK_PROFILE['username'], html_output)
+
+    def test_community_page_renders(self):
+        """Tests that the Community page renders the feed correctly."""
+    
+        MOCK_FEED = [{
+            'post_id': 'post1',
+            'username': 'best_friend_99',
+            'user_image': 'http://example.com/pic.jpg',
+            'timestamp': '2024-01-01 00:00:00',
+            'content': 'Had a great workout today!',
+            'post_image': '',
+            'likes': 0,
+            'comments': []
+        }]
+
+        with patch("pages.community.get_user_profile", return_value=MOCK_PROFILE), \
+             patch("pages.community.get_friend_feed", return_value=MOCK_FEED), \
+             patch("pages.community.get_genai_advice", return_value=MOCK_ADVICE):
+            
+            at = AppTest.from_string("""
+import streamlit as st
+from pages import display_community_page
+display_community_page('user1')
+""")
+            at.run()
+            
+            if at.exception:
+                print("\n🔥 COMMUNITY PAGE CRASHED:", at.exception[0].message, "\n")
+                
+            self.assertFalse(at.exception)
+            
+            html_output = "".join([m.value for m in at.markdown])
+            
+            self.assertIn(MOCK_FEED[0]['content'], html_output)
+
+    def test_activity_page_renders(self):
+        """Tests that the Activity page renders the summary and recent workouts."""
+
+        with patch("pages.activity.get_user_profile", return_value=MOCK_PROFILE), \
+             patch("pages.activity.get_user_workouts", return_value=MOCK_WORKOUTS):
+             
+            at = AppTest.from_string("""
+import streamlit as st
+from pages import display_activity_page
+display_activity_page('user1')
+""")
+            at.run()
+            
+            if at.exception:
+                print("\n🔥 ACTIVITY PAGE CRASHED:", at.exception[0].message, "\n")
+                
+            self.assertFalse(at.exception)
+            
+            html_output = "".join([m.value for m in at.markdown])
+            self.assertIn("My Activity", html_output)
+            self.assertIn("Total Workouts", html_output)
+            self.assertIn("6,000", html_output)
 
 
 if __name__ == "__main__":

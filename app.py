@@ -9,7 +9,6 @@ import streamlit as st
 from datetime import datetime, date
 import random
 import google.generativeai as genai
-from modules import display_my_custom_component, display_post, display_genai_advice, display_recent_workouts, display_recent_workouts_with_add_form
 from data_fetcher import (
     add_friend,
     authenticate_user,
@@ -26,8 +25,16 @@ from data_fetcher import (
     update_user_profile_details,
     update_user_password,
 )
-from community_page import display_community_page
-from activity_page import display_activity_page
+from pages import  (
+    display_profile_page, 
+    display_posts_page,
+    display_community_page,
+    display_activity_page,
+    display_recent_workouts,
+    display_recent_workouts_with_add_form,
+    display_genai_advice,
+)
+
 
 GEMINI_API_KEY = "AIzaSyCUwvjVDxFk75RHFbJ9ljnIvYnhilv6xqM"
 
@@ -37,6 +44,20 @@ GEMINI_API_KEY = "AIzaSyCUwvjVDxFk75RHFbJ9ljnIvYnhilv6xqM"
 GLOBAL_THEME_CSS = """
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
 <style>
+    /* Hide the default Streamlit auto-generated page navigation */
+    [data-testid="stSidebarNav"] {
+        display: none !important;
+    }
+
+    /* Force the sidebar content to move up and ignore the deleted nav's ghost padding */
+    [data-testid="stSidebar"] > div:first-child {
+        padding-top: 0rem !important; 
+    }
+    
+    [data-testid="stSidebarUserContent"] {
+        padding-top: 0rem !important;
+    }
+
     /* Base App Theme */
     .stApp, .stAppHeader {
         background-color: #0d0d0d !important;
@@ -105,15 +126,22 @@ GLOBAL_THEME_CSS = """
     
     /* 2. Style the invisible box around the menu item into a pill */
     [data-testid="stSidebar"] div[role="radiogroup"] label {
+        width: 100% !important; /* <--- THE FIX: Forces the clickable area to span the entire sidebar */
         background-color: transparent !important;
         border-radius: 8px !important;
         padding: 8px 16px !important;
         margin-bottom: 6px !important;
         transition: all 0.2s ease !important;
         cursor: pointer !important;
-        border-left: 4px solid transparent !important; /* Placeholder for active border */
+        border-left: 4px solid transparent !important; 
         display: flex !important;
         align-items: center !important;
+    }
+
+    /* Ensure the inner container fills the new wide label so the whole thing is clickable */
+    [data-testid="stSidebar"] div[role="radiogroup"] label > div:last-of-type {
+        width: 100% !important;
+        cursor: pointer !important;
     }
     
     /* 3. The Hover State (Making it POP) */
@@ -284,6 +312,12 @@ def display_app_page():
         st.session_state["username"] = None
 
     if not st.session_state.get("user_id"):
+        st.markdown("""
+        <style>
+            [data-testid="stSidebar"] { display: none !important; }
+            [data-testid="collapsedControl"] { display: none !important; }
+        </style>
+        """, unsafe_allow_html=True)
         _display_auth_gate()
         return
 
@@ -298,7 +332,7 @@ def display_app_page():
 
     selection = st.sidebar.radio(
         "Navigation",
-        ["Home", "Profile", "Posts", "Recent Workouts", "AI Trainer Advice", "Community", "Activity"],
+        ["Home", "Profile", "Posts", "Activity", "Recent Workouts", "Community", "AI Trainer Advice"],
         label_visibility="collapsed"
     )
 
@@ -380,60 +414,7 @@ def display_app_page():
                 st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
 
     elif selection == "Profile":
-        st.markdown("<h1 style='font-size: 3em;'>Profile</h1>", unsafe_allow_html=True)
-        user_profile = get_user_profile(userId)
-        if not user_profile:
-            st.error('Could not load your profile.')
-            return
-
-        image_url_default = user_profile.get('profile_image') or ''
-        raw_dob = user_profile.get('date_of_birth')
-
-        if isinstance(raw_dob, datetime):
-            dob_default = raw_dob.date()
-        elif isinstance(raw_dob, date):
-            dob_default = raw_dob
-        else:
-            try:
-                dob_default = datetime.fromisoformat(str(raw_dob)).date() if raw_dob else date(2000, 1, 1)
-            except (TypeError, ValueError):
-                dob_default = date(2000, 1, 1)
-
-        with st.form('profile_edit_form'):
-            updated_image_url = st.text_input('Profile Image URL', value=image_url_default)
-            updated_dob = st.date_input('Date of Birth', value=dob_default)
-            update_profile_submitted = st.form_submit_button('Save Profile Changes')
-
-        if update_profile_submitted:
-            try:
-                update_user_profile_details(userId, updated_image_url, updated_dob)
-                st.success('Profile updated successfully.')
-                st.rerun()
-            except ValueError as err:
-                st.error(str(err))
-            except Exception:
-                st.error('Could not update profile right now. Please try again.')
-                
-        st.markdown("<h2 style='font-size: 2em; margin-top: 30px;'>Change Password</h2>", unsafe_allow_html=True)
-        with st.form('password_change_form'):
-            new_password = st.text_input('New Password', type='password')
-            confirm_password = st.text_input('Confirm New Password', type='password')
-            update_password_submitted = st.form_submit_button('Update Password')
-
-        if update_password_submitted:
-            if not new_password:
-                st.error('Please enter a new password.')
-            elif new_password != confirm_password:
-                st.error('Passwords do not match.')
-            else:
-                try:
-                    update_user_password(userId, new_password)
-                    st.success('Password updated successfully.')
-                except ValueError as err:
-                    st.error(str(err))
-                except Exception:
-                    st.error('Could not update password right now. Please try again.')
-
+        display_profile_page(userId)
                 
     elif selection == "Posts":
         st.markdown("<h1 style='font-size: 3em;'>Posts</h1>", unsafe_allow_html=True)
@@ -461,7 +442,7 @@ def display_app_page():
         if not posts:
             st.info('No posts yet. Create your first post above.')
         for post in posts:
-            display_post(
+            display_posts_page(
                 username=user_profile['username'],
                 user_image=user_profile['profile_image'],
                 timestamp=post['timestamp'],

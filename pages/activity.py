@@ -8,7 +8,7 @@ from data_fetcher import (
     get_user_workouts,
     increment_post_likes,
 )
-from modules import display_post, display_recent_workouts
+from pages import display_posts_page, display_recent_workouts
 from modules import display_activity_summary
 
 
@@ -32,25 +32,40 @@ def _build_share_content(workouts):
 
 def display_activity_page(user_id):
     """Display a user's activity page and allow sharing a stat as a post."""
-    st.markdown("<h1 style='font-size: 3.5em; line-height: 1; margin-bottom: 20px;'>My Activity</h1>", unsafe_allow_html=True)
-
-    profile = get_user_profile(user_id)
-    workouts = get_user_workouts(user_id)
+    
+    # Main Page Title (Keeping it massive)
+    st.markdown("<h1 style='font-size: 3.5em; line-height: 1; margin-bottom: 30px;'>My Activity</h1>", unsafe_allow_html=True)
 
     profile = get_user_profile(user_id) or {}
     workouts = get_user_workouts(user_id) or []
 
-    st.markdown("<h2 style='font-size: 2.2em; margin-bottom: 0;'>Activity Summary</h2>", unsafe_allow_html=True)
-    st.caption('A complete snapshot of your current progress.')
+    if not workouts:
+        st.info('No workouts found yet. Log a workout to see your activity here.')
+        return
+
+    # ---------------------------------------------------------
+    # HELPER FUNCTION: Sleek Headers with Gradient Divider
+    # ---------------------------------------------------------
+    def styled_header(title, subtitle):
+        st.markdown(f"""
+        <div style="margin-top: 20px; margin-bottom: 20px;">
+            <h2 style="font-family: 'Bebas Neue', sans-serif; font-size: 2.2em; color: #ffffff; letter-spacing: 0.05em; margin: 0 0 10px 0; line-height: 1;">{title}</h2>
+            <div style="width: 44px; height: 3px; background: linear-gradient(90deg, #fa114f, #ff6b35); border-radius: 2px; margin-bottom: 12px;"></div>
+            <div style="font-family: 'DM Sans', sans-serif; color: #657786; font-size: 0.9em;">{subtitle}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    # 1. Activity Summary Section
+    styled_header("Activity Summary", "A complete snapshot of your current progress.")
     display_activity_summary(workouts)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
     total_workouts, total_steps, total_calories = _build_activity_summary(workouts)
 
-    # Custom HTML for the summary metrics
+    # Custom HTML for the 3 summary metrics
     summary_html = f"""
-    <div style="display: flex; gap: 20px; margin-bottom: 40px;">
+    <div style="display: flex; gap: 20px; margin-bottom: 50px;">
         <div style="flex: 1; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 20px; text-align: center;">
             <div style="font-family: 'DM Sans', sans-serif; font-size: 0.75em; color: #fa114f; text-transform: uppercase; letter-spacing: 0.1em; font-weight: bold; margin-bottom: 5px;">Total Workouts</div>
             <div style="font-family: 'Bebas Neue', sans-serif; font-size: 2.5em; color: #ffffff; line-height: 1;">{total_workouts}</div>
@@ -67,15 +82,16 @@ def display_activity_page(user_id):
     """
     st.markdown(summary_html, unsafe_allow_html=True)
 
-    st.markdown("<h2 style='font-size: 2.2em; margin-bottom: 0;'>Recent Activity</h2>", unsafe_allow_html=True)
-    st.caption('Your latest logged workouts.')
+    # 2. Recent Workouts Section
+    styled_header("Recent Workouts", "Your latest logged workouts.")
+    st.markdown("<br>", unsafe_allow_html=True)
     display_recent_workouts(workouts[:3])
 
     st.markdown("<br>", unsafe_allow_html=True)
     st.divider()
     
-    st.markdown("<h2 style='font-size: 2.2em; margin-bottom: 0;'>Share With Community</h2>", unsafe_allow_html=True)
-    st.caption('Share a quick stat from your latest workout to your feed.')
+    # 3. Share Section
+    styled_header("Share With Community", "Share a quick stat from your latest workout to your feed.")
     st.markdown("<br>", unsafe_allow_html=True)
 
     if st.button('Share My Latest Stats', type='primary', use_container_width=True):
@@ -83,7 +99,7 @@ def display_activity_page(user_id):
         created_post = create_user_post(user_id, post_content)
         st.success('Your post was shared to the community.')
 
-        display_post(
+        display_posts_page(
             username=profile.get('username', user_id),
             user_image=profile.get('profile_image', ''),
             timestamp=created_post['timestamp'],
