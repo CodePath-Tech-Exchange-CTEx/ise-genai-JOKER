@@ -514,7 +514,7 @@ Keep the tone like a knowledgeable coach who knows them personally. Be specific 
             with st.spinner("Getting your personalised advice..."):
                 try:
                     genai.configure(api_key=GEMINI_API_KEY)
-                    model  = genai.GenerativeModel("gemini-2.5-flash-lite")
+                    model  = genai.GenerativeModel("gemini-2.0-flash-001")
                     response = model.generate_content(prompt)
                     ai_content = response.text
                 except Exception as e:
