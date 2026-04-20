@@ -38,6 +38,11 @@ from pages import  (
 
 GEMINI_API_KEY = "AIzaSyCUwvjVDxFk75RHFbJ9ljnIvYnhilv6xqM"
 
+st.set_page_config(
+    page_title="The Training Club",
+    page_icon="🏃",
+)
+
 # ---------------------------------------------------------
 # GLOBAL THEME INJECTION
 # ---------------------------------------------------------
