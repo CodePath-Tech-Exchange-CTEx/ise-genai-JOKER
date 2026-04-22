@@ -175,9 +175,28 @@ def display_recent_workouts_with_add_form(user_id, workouts_list):
                     step=100,
                     help="Number of steps taken"
                 )
-                workout_date = st.date_input(
-                    "Workout Date",
-                    help="Date when the workout occurred"
+                time_col1, time_col2 = st.columns(2)
+            with time_col1:
+                start_date = st.date_input(
+                    "Start Date",
+                    help="Date when the workout started"
+                )
+                start_time = st.time_input(
+                    "Start Time",
+                    value=datetime.now().time().replace(second=0, microsecond=0),
+                    help="Time when the workout started"
+                )
+
+            with time_col2:
+                end_date = st.date_input(
+                    "End Date",
+                    value=start_date,
+                    help="Date when the workout ended"
+                )
+                end_time = st.time_input(
+                    "End Time",
+                    value=datetime.now().time().replace(second=0, microsecond=0),
+                    help="Time when the workout ended"
                 )
             
             add_workout_submitted = st.form_submit_button("Log Workout", type="primary", use_container_width=True)
@@ -187,17 +206,21 @@ def display_recent_workouts_with_add_form(user_id, workouts_list):
                 st.error("Please enter at least one workout metric (distance, steps, or calories).")
             else:
                 try:
-                    from datetime import datetime as dt
-                    start_time = dt.combine(workout_date, dt.min.time())
-                    new_workout = create_user_workout(
-                        user_id=user_id,
-                        total_distance=distance,
-                        total_steps=int(steps),
-                        calories_burned=calories,
-                        start_timestamp=start_time
-                    )
-                    st.success("✅ Workout logged successfully!")
-                    st.rerun()
+                    start_timestamp = datetime.combine(start_date, start_time)
+                    end_timestamp = datetime.combine(end_date, end_time)
+                    if end_timestamp < start_timestamp:
+                        st.error("End timestamp must be after the start timestamp.")
+                    else:
+                        create_user_workout(
+                            user_id=user_id,
+                            total_distance=distance,
+                            total_steps=int(steps),
+                            calories_burned=calories,
+                            start_timestamp=start_timestamp,
+                            end_timestamp=end_timestamp,
+                        )
+                        st.success("✅ Workout logged successfully!")
+                        st.rerun()
                 except ValueError as err:
                     st.error(f"Invalid input: {str(err)}")
                 except Exception as err:

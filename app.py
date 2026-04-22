@@ -424,12 +424,25 @@ def display_app_page():
             st.caption("No suggestions right now.")
         else:
             for person in suggestions:
+                person_image = (person.get('profile_image') or '').strip()
+                if person_image:
+                    avatar_html = (
+                        f"<img src=\"{person_image}\" alt=\"avatar\" "
+                        "style=\"width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 1px solid rgba(255,255,255,0.16);\">"
+                    )
+                else:
+                    avatar_html = (
+                        "<div style=\"width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.16);\">🏃</div>"
+                    )
                 # Styled user list row
                 st.markdown(f"""
                 <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 15px 20px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between;">
-                    <div>
-                        <div style="color: #ffffff; font-weight: bold; font-size: 1.1em;">{person.get('full_name', 'Unknown')}</div>
-                        <div style="color: #bcbcbc; font-size: 0.9em; font-style: italic;">@{person.get('username', '')}</div>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        {avatar_html}
+                        <div>
+                            <div style="color: #ffffff; font-weight: bold; font-size: 1.1em;">{person.get('full_name', 'Unknown')}</div>
+                            <div style="color: #bcbcbc; font-size: 0.9em; font-style: italic;">@{person.get('username', '')}</div>
+                        </div>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
