@@ -262,22 +262,21 @@ class TestFullAppMock(unittest.TestCase):
     """Full app integration tests with data_fetcher and auth fully mocked."""
 
     def _run_with_mocks(self, page=None):
-        """Runs app.py with all data_fetcher functions and auth mocked out."""
         with patch("data_fetcher.get_user_profile", return_value=MOCK_PROFILE), \
-             patch("data_fetcher.get_user_posts", return_value=MOCK_POSTS), \
-             patch("data_fetcher.get_user_workouts", return_value=MOCK_WORKOUTS), \
-             patch("data_fetcher.get_genai_advice", return_value=MOCK_ADVICE), \
-             patch("data_fetcher.get_user_sensor_data", return_value=MOCK_SENSOR), \
-             patch("data_fetcher.authenticate_user", return_value=MOCK_AUTH_USER):
-            at = AppTest.from_file("app.py", default_timeout=30)
-            # Inject authenticated session state to bypass login gate
-            at.session_state["authenticated"] = True
-            at.session_state["user_id"] = "user1"
-            at.session_state["username"] = "remi_the_rems"
-            at.run()
-            if page:
-                at.sidebar.radio[0].set_value(page)
+            patch("data_fetcher.get_user_posts", return_value=MOCK_POSTS), \
+            patch("data_fetcher.get_user_workouts", return_value=MOCK_WORKOUTS), \
+            patch("data_fetcher.get_genai_advice", return_value=MOCK_ADVICE), \
+            patch("data_fetcher.get_user_sensor_data", return_value=MOCK_SENSOR), \
+            patch("data_fetcher.authenticate_user", return_value=MOCK_AUTH_USER), \
+            patch("data_fetcher.get_people_you_may_know", return_value=[]):
+                at = AppTest.from_file("app.py", default_timeout=30)
+                at.session_state["authenticated"] = True
+                at.session_state["user_id"] = "user1"
+                at.session_state["username"] = "remi_the_rems"
                 at.run()
+                if page:
+                    at.sidebar.radio[0].set_value(page)
+                    at.run()
         return at
 
     def test_app_loads_without_error(self):
