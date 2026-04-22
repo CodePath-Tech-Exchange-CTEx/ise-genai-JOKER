@@ -8,6 +8,8 @@
 import streamlit as st
 from datetime import datetime, date
 import random
+import vertexai
+from vertexai.generative_models import GenerativeModel
 import google.generativeai as genai
 from data_fetcher import (
     add_friend,
@@ -516,47 +518,58 @@ def display_app_page():
         display_recent_workouts_with_add_form(userId, workouts)
 
     elif selection == "AI Trainer Advice":
+
+        st.header("AI Trainer Advice")
+
+        if st.button("🔄 Generate New Advice"):
+            st.session_state.pop("ai_advice_content", None)
+            st.session_state.pop("ai_advice_timestamp", None)
+
         if "ai_advice_content" not in st.session_state:
-            # Gather user context
+
+            # Define these BEFORE the try block
             user_profile = get_user_profile(userId)
-            workouts     = get_user_workouts(userId)
- 
+            workouts = get_user_workouts(userId)
             username = user_profile.get("username", "the user")
- 
-            # Build prompt 
+
             prompt = f"""You are an expert personal fitness trainer and motivational coach.
 Your job is to give {username} a personalised, energetic, and actionable workout motivation message.
- 
+
 Here is their recent workout history:
 {workouts}
- 
- 
+
 Based on this data, write a motivational message (3-5 sentences) that:
 - Acknowledges something specific from their recent activity or stats
 - Highlights a genuine strength or positive trend you can see
 - Gives one concrete, encouraging tip or challenge for their next session
 - Ends on a high-energy, uplifting note
- 
+
 Keep the tone like a knowledgeable coach who knows them personally. Be specific — avoid generic filler phrases."""
- 
-            # Call Gemini
-            with st.spinner("Getting your personalised advice..."):
+
+            ai_content = None  # define before try so except can always access it
+
+            with st.spinner("Getting your personalised advice from Vertex AI..."):
                 try:
-                    genai.configure(api_key=GEMINI_API_KEY)
-                    model  = genai.GenerativeModel("gemini-2.0-flash-001")
+                    vertexai.init(location="us-central1")
+                    model = GenerativeModel("gemini-2.5-flash")
                     response = model.generate_content(prompt)
                     ai_content = response.text
+
                 except Exception as e:
-                    ai_content = random.choice(FALLBACK_MOTIVATIONS)
- 
-            st.session_state["ai_advice_content"]   = ai_content
+                    st.warning(f"Vertex AI unavailable, showing default motivation. ({e})")
+
+        # Fallback if ai_content is still None
+            if not ai_content:
+                ai_content = random.choice(FALLBACK_MOTIVATIONS)
+
+            st.session_state["ai_advice_content"] = ai_content
             st.session_state["ai_advice_timestamp"] = datetime.now()
- 
+
         display_genai_advice(
-            timestamp = st.session_state["ai_advice_timestamp"],
-            content   = st.session_state["ai_advice_content"],
-            image     = None,   
-        )
+            timestamp=st.session_state["ai_advice_timestamp"],
+            content=st.session_state["ai_advice_content"],
+            image=None,
+    )
 
 if __name__ == '__main__':
     display_app_page()
