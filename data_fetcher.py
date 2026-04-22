@@ -311,6 +311,58 @@ def add_friend(user_id, friend_user_id):
     _clear_cached_reads()
 
 @st.cache_data(ttl=60)
+def get_user_friends(user_id):
+    """Returns a user's friends with display metadata."""
+    cleaned_user_id = (user_id or '').strip()
+    if not cleaned_user_id:
+        return []
+
+    client = get_bq_client()
+    query = """
+        SELECT
+            f.UserId2 as friend_user_id,
+            u.Name as full_name,
+            u.Username as username,
+            u.ImageUrl as profile_image
+        FROM `robert-hardy-hu.JOKER.Friends` f
+        JOIN `robert-hardy-hu.JOKER.Users` u ON u.UserId = f.UserId2
+        WHERE f.UserId1 = @user_id
+        ORDER BY u.Username
+    """
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter('user_id', 'STRING', cleaned_user_id),
+        ]
+    )
+    return [dict(row) for row in client.query(query, job_config=job_config).result()]
+
+
+def remove_friend(user_id, friend_user_id):
+    """Removes a friendship relationship between two users."""
+    cleaned_user_id = (user_id or '').strip()
+    cleaned_friend_user_id = (friend_user_id or '').strip()
+
+    if not cleaned_user_id or not cleaned_friend_user_id:
+        raise ValueError('Both user ids are required.')
+    if cleaned_user_id == cleaned_friend_user_id:
+        raise ValueError('You cannot remove yourself as a friend.')
+
+    client = get_bq_client()
+    delete_query = """
+        DELETE FROM `robert-hardy-hu.JOKER.Friends`
+        WHERE (UserId1 = @user_id AND UserId2 = @friend_user_id)
+           OR (UserId1 = @friend_user_id AND UserId2 = @user_id)
+    """
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter('user_id', 'STRING', cleaned_user_id),
+            bigquery.ScalarQueryParameter('friend_user_id', 'STRING', cleaned_friend_user_id),
+        ]
+    )
+    client.query(delete_query, job_config=job_config).result()
+    _clear_cached_reads()
+    
+@st.cache_data(ttl=60)
 def get_friend_feed(user_id, limit=10):
     """Returns recent posts from friends using one query."""
     safe_limit = max(1, int(limit))
@@ -532,6 +584,8 @@ def create_user_workout(user_id, total_distance, total_steps, calories_burned, s
     if end_timestamp is None:
         from datetime import timedelta
         end_timestamp = start_timestamp + timedelta(hours=1)
+    if end_timestamp < start_timestamp:
+        raise ValueError('End timestamp cannot be before start timestamp.')    
     
     client = get_bq_client()
     workout_id = _generate_unique_id(client, 'robert-hardy-hu.JOKER.Workouts', 'WorkoutId', 'workout')

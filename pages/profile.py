@@ -1,14 +1,17 @@
 import streamlit as st
 from datetime import datetime, date
 from data_fetcher import (
-    get_user_profile, 
+    get_user_profile,
+    get_user_friends,
+    remove_friend, 
     update_user_profile_details, 
     update_user_password
 )
 
 def display_profile_page(user_id):
     st.markdown("<h1 style='font-size: 3.5em; line-height: 1; margin-bottom: 20px;'>Profile</h1>", unsafe_allow_html=True)
-    
+    friends_flash_key = f"friends_flash_message_{user_id}"
+
     user_profile = get_user_profile(user_id)
     if not user_profile:
         st.error('Could not load your profile.')
@@ -23,6 +26,14 @@ def display_profile_page(user_id):
     # VIEW MODE
     # ---------------------------------------------------------
     if not st.session_state[edit_key]:
+        friends_key = f"show_friends_{user_id}"
+        if friends_key not in st.session_state:
+            st.session_state[friends_key] = False
+        
+        if st.session_state.get(friends_flash_key):
+            st.success(st.session_state[friends_flash_key])
+            st.session_state.pop(friends_flash_key, None)
+
         # Clean up data for display
         full_name = user_profile.get('full_name') or 'Unknown User'
         username = user_profile.get('username') or user_id
@@ -122,14 +133,62 @@ def display_profile_page(user_id):
         </style>
         """, unsafe_allow_html=True)
         
-        # Put button in a small column so it doesn't stretch
-        col1, _ = st.columns([1, 4])
+        # Put buttons in small columns so they don't stretch
+        col1, col2, _ = st.columns([1, 1, 3])
         with col1:
             st.markdown('<div class="edit-btn-container">', unsafe_allow_html=True)
             if st.button("✏️ Edit Profile", use_container_width=True):
                 st.session_state[edit_key] = True
                 st.rerun()
             st.markdown('</div>', unsafe_allow_html=True)
+
+        with col2:
+            st.markdown('<div class="edit-btn-container">', unsafe_allow_html=True)
+            if st.button("👥 Friends", use_container_width=True):
+                st.session_state[friends_key] = not st.session_state[friends_key]
+                st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        if st.session_state[friends_key]:
+            st.markdown("<h2 style='font-size: 2em; margin-top: 25px;'>My Friends</h2>", unsafe_allow_html=True)
+            friends = get_user_friends(user_id)
+
+            if not friends:
+                st.info('You do not have friends added yet.')
+            else:
+                for friend in friends:
+                    friend_name = friend.get('full_name') or friend.get('username') or friend.get('friend_user_id')
+                    friend_username = friend.get('username') or friend.get('friend_user_id')
+                    friend_user_id = friend.get('friend_user_id')
+                    friend_image = (friend.get('profile_image') or '').strip()
+                    if friend_image:
+                        avatar_html = (
+                            f"<img src='{friend_image}' alt='avatar' "
+                            "style='width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 1px solid rgba(255,255,255,0.16);'>"
+                        )
+                    else:
+                        avatar_html = (
+                            "<div style='width: 44px; height: 44px; border-radius: 50%; "
+                            "display: flex; align-items: center; justify-content: center; "
+                            "background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.16);'>🏃</div>"
+                        )
+                    row_col1, row_col2 = st.columns([4, 1])
+                    with row_col1:
+                        st.markdown(
+                            f"<div style='padding: 12px 14px; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; margin-bottom: 8px; background: rgba(255,255,255,0.02); display: flex; align-items: center; gap: 12px;'>{avatar_html}<div><strong>{friend_name}</strong><br><span style='color:#bcbcbc;'>@{friend_username}</span></div></div>",
+                            unsafe_allow_html=True,
+                        )
+                    with row_col2:
+                        if st.button('Remove Friend', key=f"remove_friend_{user_id}_{friend_user_id}", use_container_width=True):
+                            try:
+                                remove_friend(user_id, friend_user_id)
+                                st.session_state[friends_flash_key] = f"@{friend_username} deleted from your friends succesfully"
+                                st.rerun()
+                            except ValueError as err:
+                                st.error(str(err))
+                            except Exception:
+                                st.error('Could not remove friend right now. Please try again.')
+
 
     # ---------------------------------------------------------
     # EDIT MODE
