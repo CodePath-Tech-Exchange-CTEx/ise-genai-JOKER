@@ -205,13 +205,43 @@ GLOBAL_THEME_CSS = """
         color: #ffffff !important;
         transform: none !important; /* Prevents the shrink-click effect from bleeding */
     }
+
+    /* 1. Nuke the "Press Enter to submit form" text to fix the overlap */
+    div[data-testid="InputInstructions"] {
+        display: none !important;
+    }
+
+    /* 2. Clean up the double focus ring on inputs */
+    [data-baseweb="input"]:focus-within {
+        /* Removes Streamlit's default blue/gray glow */
+        box-shadow: 0 0 0 1px #fa114f !important; 
+        /* Forces the outer container to use your pink branding */
+        border-color: #fa114f !important;         
+    }
+    
+    /* Ensure the inner input doesn't draw its own separate border */
+    [data-baseweb="input"] input:focus {
+        outline: none !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
+
+        /* Add the interactive hover lift effect to the custom HTML cards */
+    .dashboard-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+    }
+    
+    .dashboard-card:hover {
+        transform: translateY(-6px) !important;
+        box-shadow: 0 0 0 1px #0d0d0d, 0 12px 30px rgba(250, 17, 79, 0.2) !important;
+    }
 </style>
 """
 
 def create_dashboard_card(title, content, icon):
     """Helper to generate styled cards for the Home page dashboard"""
     return f"""
-    <div style="background: #0d0d0d; border-radius: 16px; padding: 24px; height: 100%;
+    <div class="dashboard-card"style="background: #0d0d0d; border-radius: 16px; padding: 24px; height: 100%;
                 box-shadow: 0 0 0 1px rgba(255,255,255,0.06), 0 12px 30px rgba(0,0,0,0.5);
                 display: flex; flex-direction: column; gap: 12px;">
         <div style="display: flex; align-items: center; gap: 10px;">
