@@ -8,8 +8,6 @@
 import streamlit as st
 from datetime import datetime, date
 import random
-import vertexai
-from vertexai.generative_models import GenerativeModel
 import google.generativeai as genai
 from data_fetcher import (
     add_friend,
@@ -550,6 +548,8 @@ Keep the tone like a knowledgeable coach who knows them personally. Be specific 
 
             with st.spinner("Getting your personalised advice from Vertex AI..."):
                 try:
+                    import vertexai
+                    from vertexai.generative_models import GenerativeModel
                     vertexai.init(location="us-central1")
                     model = GenerativeModel("gemini-2.5-flash")
                     response = model.generate_content(prompt)
