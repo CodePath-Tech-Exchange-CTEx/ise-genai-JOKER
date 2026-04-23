@@ -6,6 +6,11 @@ Kamsi Onyewuchi,
 Robert Hardy, 
 Juan David Buitrago Martinez
 
+# Web Deployment
+
+Click on this link to deploy the hosted version of the website:
+https://joker-website-mgzz762uea-uc.a.run.app/
+
 # Setup
 
 One person needs to follow SETUP.md to complete setup. Ignore this if it is already done for you!
